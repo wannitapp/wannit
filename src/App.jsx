@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { Gift, Pencil, Trash2, Share2, Plus, Lock, ShoppingBag, Copy, X, Check, Star, LogOut, Settings, PlusCircle, ArrowLeft, Calendar, Tag, DollarSign, Link, MessageSquare, ChevronRight, Search, Heart } from "lucide-react";
+import { Gift, Pencil, Trash2, Share2, Plus, Lock, ShoppingBag, Copy, X, Check, Star, Settings, PlusCircle, ArrowLeft, Calendar, Link, MessageSquare } from "lucide-react";
+import { auth, provider, db } from "./firebase";
+import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where } from "firebase/firestore";
 
 /* ══ STYLES ══ */
 const injectStyles = () => {
@@ -7,7 +10,7 @@ const injectStyles = () => {
   const s = document.createElement("style");
   s.id = "ws";
   s.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Circular+Std:wght@400;500;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Plus Jakarta Sans',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#222222}
     @keyframes popIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
@@ -31,28 +34,18 @@ const injectStyles = () => {
   document.head.appendChild(s);
 };
 
-/* ══ TOKENS — Airbnb palette ══ */
 const T = {
-  bg:      "#FFFFFF",
-  surface: "#FFFFFF",
-  surface2:"#F7F7F7",
-  border:  "#EBEBEB",
-  text:    "#222222",
-  sub:     "#484848",
-  muted:   "#717171",
-  light:   "#B0B0B0",
-  accent:  "#FF385C",
-  accentL: "#FFF1F2",
-  accentD: "#E31C5F",
-  taken:   "#F0FFF4",
-  takenT:  "#276749",
+  bg:"#FFFFFF", surface:"#FFFFFF", surface2:"#F7F7F7", border:"#EBEBEB",
+  text:"#222222", sub:"#484848", muted:"#717171", light:"#B0B0B0",
+  accent:"#FF385C", accentL:"#FFF1F2", accentD:"#E31C5F",
+  taken:"#F0FFF4", takenT:"#276749",
 };
 
 const CATEGORIES = ["🎀 Ropa","💄 Belleza","📚 Libros","🎮 Tech","🏠 Hogar","✈️ Experiencias","🍫 Comida","🎵 Música","💪 Deporte","🌸 Otro"];
 const PRIORITIES = [
   { short:"🔥 Lo quiero mucho", color:"#FF385C" },
-  { short:"✨ Estaría bueno",   color:"#F59E0B" },
-  { short:"💙 Si se puede",    color:"#6366F1" },
+  { short:"✨ Estaría bueno", color:"#F59E0B" },
+  { short:"💙 Si se puede", color:"#6366F1" },
 ];
 const EVENTS = ["🎂 Cumpleaños","🎄 Navidad","👩 Día de la Madre","👨 Día del Padre","👶 Día del Niño","💝 San Valentín","🎓 Graduación","🎉 Otro"];
 const EMOJIS = ["🎁","👟","📖","🕯️","💄","🎮","🎵","🌸","💍","🧣","☕","🍰","✈️","🎨","💪","🏠","📷","🌿","🦋","💎","👜","🎧","🍷","🌺","🧴","⌚","🎯","🛋️","🧸","🎀"];
@@ -62,19 +55,6 @@ const PRANGES = [["todo","Todos"],["u50","Hasta $50k"],["m50","$50k–$100k"],["
 const fmt = n => n ? `$${Number(n).toLocaleString("es-CL")}` : "";
 const fmtDate = d => { if(!d) return ""; return new Date(d+"T00:00:00").toLocaleDateString("es-CL",{day:"numeric",month:"long",year:"numeric"}); };
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2);
-
-const SEED = [
-  { id:"l1", event:EVENTS[0], date:"2025-09-15", message:"¡Este año quiero celebrar a lo grande! 🎉", items:[
-    { id:"i1", name:"Zapatillas Nike Air Max", category:"💪 Deporte", price:120000, link:"https://falabella.com", priority:0, taken:false, takenBy:"", notes:"Talla 38, blanco o rosado", color:"#FF385C", emoji:"👟", description:"", photo:null },
-    { id:"i2", name:"Libro 'Lessons in Chemistry'", category:"📚 Libros", price:18000, link:"", priority:1, taken:false, takenBy:"", notes:"En español si es posible", color:"#6366F1", emoji:"📖", description:"", photo:null },
-    { id:"i3", name:"Set de velas aromáticas", category:"🏠 Hogar", price:35000, link:"", priority:2, taken:true, takenBy:"Mamá", notes:"", color:"#8B5CF6", emoji:"🕯️", description:"", photo:null },
-    { id:"i4", name:"Audífonos Sony WH-1000XM5", category:"🎮 Tech", price:180000, link:"https://falabella.com", priority:0, taken:false, takenBy:"", notes:"Negro o plateado", color:"#10B981", emoji:"🎧", description:"", photo:null },
-  ]},
-  { id:"l2", event:EVENTS[1], date:"2025-12-25", message:"Ideas para Navidad 🎄", items:[
-    { id:"i5", name:"Pijama de invierno", category:"🎀 Ropa", price:28000, link:"", priority:1, taken:false, takenBy:"", notes:"Talla M", color:"#6366F1", emoji:"🧣", description:"", photo:null },
-    { id:"i6", name:"Cafetera italiana", category:"🏠 Hogar", price:45000, link:"", priority:0, taken:false, takenBy:"", notes:"Para 4 tazas", color:"#F59E0B", emoji:"☕", description:"", photo:null },
-  ]},
-];
 
 /* ══ LOGO ══ */
 function Logo({ size=32 }) {
@@ -102,28 +82,23 @@ const GSvg = () => (
     <path fill="#1976D2" d="M43.6 20H24v8h11.3c-.9 2.5-2.6 4.6-4.8 6l6.2 5.2C40.5 35.7 44 30.3 44 24c0-1.3-.1-2.7-.4-4z"/>
   </svg>
 );
+
 function GBtn({ onClick, label="Continuar con Google", full=false, small=false }) {
   return (
     <button className="btn" onClick={onClick} style={{
-      background:"white", color:T.text,
-      border:"1px solid #DCDCDC", borderRadius:8,
-      padding:small?"10px 16px":"14px 24px",
-      fontSize:small?13:15, fontWeight:600,
-      width:full?"100%":"auto",
-      boxShadow:"0 1px 2px rgba(0,0,0,0.08)",
+      background:"white", color:T.text, border:"1px solid #DCDCDC", borderRadius:8,
+      padding:small?"10px 16px":"14px 24px", fontSize:small?13:15, fontWeight:600,
+      width:full?"100%":"auto", boxShadow:"0 1px 2px rgba(0,0,0,0.08)",
     }}><GSvg/>{label}</button>
   );
 }
 
-/* ══ ATOMS ══ */
 function PillBtn({ label, active, onClick }) {
   return (
     <button className="btn" onClick={onClick} style={{
-      background:active?T.text:"white",
-      color:active?"white":T.text,
-      border:`1.5px solid ${active?T.text:"#DCDCDC"}`,
-      borderRadius:30, padding:"8px 16px",
-      fontSize:13, fontWeight:active?600:500,
+      background:active?T.text:"white", color:active?"white":T.text,
+      border:`1.5px solid ${active?T.text:"#DCDCDC"}`, borderRadius:30,
+      padding:"8px 16px", fontSize:13, fontWeight:active?600:500,
     }}>{label}</button>
   );
 }
@@ -131,10 +106,8 @@ function PillBtn({ label, active, onClick }) {
 function Swatch({ color, selected, onClick }) {
   return (
     <div onClick={onClick} style={{
-      width:24, height:24, borderRadius:"50%", background:color,
-      cursor:"pointer",
-      boxShadow:selected?`0 0 0 2px white, 0 0 0 4px ${color}`:"none",
-      transition:"box-shadow .15s",
+      width:24, height:24, borderRadius:"50%", background:color, cursor:"pointer",
+      boxShadow:selected?`0 0 0 2px white, 0 0 0 4px ${color}`:"none", transition:"box-shadow .15s",
     }}/>
   );
 }
@@ -144,8 +117,7 @@ function EmojiPick({ value, onChange }) {
   return (
     <div style={{position:"relative",display:"inline-block"}}>
       <button className="btn" onClick={()=>setOpen(!open)} style={{
-        fontSize:22, background:T.surface2, border:"1px solid #EBEBEB",
-        borderRadius:12, width:52, height:52,
+        fontSize:22, background:T.surface2, border:"1px solid #EBEBEB", borderRadius:12, width:52, height:52,
       }}>{value}</button>
       {open && (
         <div className="pop-in" style={{
@@ -170,18 +142,15 @@ function Confetti({ active }) {
   const cols = ["#FF385C","#6366F1","#10B981","#F59E0B","#EC4899"];
   const p = Array.from({length:18},(_,i)=>({
     id:i, color:cols[i%cols.length],
-    left:`${5+Math.random()*90}%`,
-    delay:`${Math.random()*.5}s`,
-    size:6+Math.random()*8,
-    circle:Math.random()>.5,
+    left:`${5+Math.random()*90}%`, delay:`${Math.random()*.5}s`,
+    size:6+Math.random()*8, circle:Math.random()>.5,
   }));
   return (
     <div style={{position:"fixed",top:0,left:0,right:0,pointerEvents:"none",zIndex:9999,overflow:"hidden",height:120}}>
       {p.map(x=>(
         <div key={x.id} style={{
-          position:"absolute", left:x.left, top:-8,
-          width:x.size, height:x.size, background:x.color,
-          borderRadius:x.circle?"50%":2,
+          position:"absolute", left:x.left, top:-8, width:x.size, height:x.size,
+          background:x.color, borderRadius:x.circle?"50%":2,
           animation:`confettiFall 1.1s ${x.delay} ease-in forwards`,
         }}/>
       ))}
@@ -198,8 +167,7 @@ function Lightbox({ src, onClose }) {
     }}>
       <button className="btn" onClick={onClose} style={{
         position:"absolute", top:20, right:20,
-        background:"rgba(255,255,255,0.1)", borderRadius:"50%",
-        width:44, height:44, color:"white", fontSize:18,
+        background:"rgba(255,255,255,0.1)", borderRadius:"50%", width:44, height:44, color:"white",
       }}><X size={20}/></button>
       <img src={src} alt="ref" onClick={e=>e.stopPropagation()} style={{
         maxWidth:"100%", maxHeight:"88vh", borderRadius:12,
@@ -214,6 +182,7 @@ const fs = {
   padding:"14px 16px", fontSize:15, background:"#FFFFFF", color:"#222222",
 };
 
+/* ══ ITEM MODAL ══ */
 function ItemModal({ item, onSave, onClose }) {
   const blank = { name:"",category:CATEGORIES[0],price:"",link:"",priority:0,notes:"",color:ICOLORS[0],emoji:"🎁",taken:false,takenBy:"",description:"",photo:null };
   const [f,setF] = useState(item || blank);
@@ -268,7 +237,7 @@ function ItemModal({ item, onSave, onClose }) {
             <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>
               <div style={{width:28,height:28,borderRadius:8,background:"#ECFDF5",display:"flex",alignItems:"center",justifyContent:"center"}}><MessageSquare size={14} color="#10B981"/></div>Lo vi en la calle / descripción
             </label>
-            <textarea value={f.description} onChange={e=>set("description",e.target.value)} placeholder="Era un sombrero de paja ancho, con cinta negra..." rows={3} style={{...fs,resize:"vertical",lineHeight:1.6,fontFamily:"'Plus Jakarta Sans',sans-serif"}}/>
+            <textarea value={f.description} onChange={e=>set("description",e.target.value)} placeholder="Era un sombrero de paja ancho..." rows={3} style={{...fs,resize:"vertical",lineHeight:1.6}}/>
           </div>
           <div style={{marginBottom:20}}>
             <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>
@@ -280,9 +249,7 @@ function ItemModal({ item, onSave, onClose }) {
                 <button className="btn" onClick={()=>set("photo",null)} style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.6)",borderRadius:"50%",width:28,height:28,color:"white"}}><X size={13}/></button>
               </div>
             ) : (
-              <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,border:"1.5px dashed #DCDCDC",borderRadius:12,padding:20,cursor:"pointer",background:T.surface2}}
-                onMouseEnter={e=>e.currentTarget.style.borderColor=T.accent}
-                onMouseLeave={e=>e.currentTarget.style.borderColor="#DCDCDC"}>
+              <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,border:"1.5px dashed #DCDCDC",borderRadius:12,padding:20,cursor:"pointer",background:T.surface2}}>
                 <span style={{fontSize:28}}>📷</span>
                 <span style={{fontSize:13,color:T.muted,fontWeight:500}}>Subir foto o screenshot</span>
                 <input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
@@ -312,7 +279,7 @@ function ItemModal({ item, onSave, onClose }) {
           </div>
           <div style={{marginBottom:28}}>
             <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>Nota para quien regala</label>
-            <input value={f.notes} onChange={e=>set("notes",e.target.value)} placeholder="Talla, color preferido, dónde encontrarlo..." style={fs}/>
+            <input value={f.notes} onChange={e=>set("notes",e.target.value)} placeholder="Talla, color preferido..." style={fs}/>
           </div>
           <button className="btn" onClick={()=>{
             if(!f.name.trim()) return;
@@ -327,8 +294,9 @@ function ItemModal({ item, onSave, onClose }) {
   );
 }
 
+/* ══ LIST MODAL ══ */
 function ListModal({ list, onSave, onClose }) {
-  const [f,setF] = useState(list||{id:uid(),event:EVENTS[0],date:"",message:"",items:[]});
+  const [f,setF] = useState(list||{event:EVENTS[0],date:"",message:""});
   const set = (k,v) => setF(p=>({...p,[k]:v}));
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:500,backdropFilter:"blur(4px)"}}>
@@ -362,8 +330,9 @@ function ListModal({ list, onSave, onClose }) {
   );
 }
 
+/* ══ SHARE MODAL ══ */
 function ShareModal({ list, userName, onClose }) {
-  const link = `https://wannit.app/${userName.toLowerCase().replace(/\s+/g,"-")}-${list.event.split(" ")[1]?.toLowerCase()||"lista"}`;
+  const link = `https://wannit.cl/${userName.toLowerCase().replace(/\s+/g,"-")}-${list.event.split(" ")[1]?.toLowerCase()||"lista"}`;
   const [copied,setCopied] = useState(false);
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:500,backdropFilter:"blur(4px)"}}>
@@ -372,19 +341,14 @@ function ShareModal({ list, userName, onClose }) {
         <div style={{padding:"0 24px",textAlign:"center"}}>
           <div style={{fontSize:48,marginBottom:12,animation:"floatY 2.5s ease-in-out infinite"}}>🎉</div>
           <div style={{fontWeight:800,fontSize:22,color:T.text,marginBottom:6}}>¡Comparte tu lista!</div>
-          <div style={{color:T.muted,fontSize:15,marginBottom:24,lineHeight:1.6}}>Mándale este link a tus amigos y familia para que elijan qué regalarte</div>
+          <div style={{color:T.muted,fontSize:15,marginBottom:24,lineHeight:1.6}}>Mándale este link a tus amigos y familia</div>
           <div style={{background:T.surface2,borderRadius:12,padding:"14px 16px",fontSize:13,color:T.muted,wordBreak:"break-all",marginBottom:16,textAlign:"left"}}>{link}</div>
-          <button className="btn" onClick={()=>{setCopied(true);setTimeout(()=>setCopied(false),2400);}} style={{
+          <button className="btn" onClick={()=>{navigator.clipboard.writeText(link);setCopied(true);setTimeout(()=>setCopied(false),2400);}} style={{
             width:"100%",background:copied?"#10B981":T.accent,color:"white",
             borderRadius:12,padding:"16px",fontSize:15,fontWeight:700,marginBottom:12,transition:"background .3s",
           }}>
             {copied?<><Check size={16}/>¡Link copiado!</>:<><Copy size={16}/>Copiar link</>}
           </button>
-          <div style={{display:"flex",gap:10,marginBottom:16}}>
-            {[["💬 WhatsApp","#25D366"],["📘 Facebook","#1877F2"],["✉️ Email","#FF385C"]].map(([l,c])=>(
-              <button key={l} className="btn" style={{flex:1,background:c+"15",color:c,border:`1px solid ${c}30`,borderRadius:10,padding:"10px 4px",fontSize:13}}>{l}</button>
-            ))}
-          </div>
           <button className="btn" onClick={onClose} style={{color:T.muted,fontSize:14,background:"none",textDecoration:"underline"}}>Cerrar</button>
         </div>
       </div>
@@ -392,60 +356,17 @@ function ShareModal({ list, userName, onClose }) {
   );
 }
 
-function LoginModal({ listOwner, onLogin, onClose }) {
-  return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:600,padding:20,backdropFilter:"blur(4px)"}}>
-      <div className="pop-in" style={{background:T.surface,borderRadius:24,width:"100%",maxWidth:380,padding:32,textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.2)"}}>
-        <div style={{fontSize:44,marginBottom:12,animation:"floatY 2.5s ease-in-out infinite"}}>🔒</div>
-        <div style={{fontWeight:800,fontSize:20,color:T.text,marginBottom:8}}>Un paso más</div>
-        <p style={{color:T.muted,fontSize:15,lineHeight:1.65,marginBottom:24}}>
-          Para marcar que vas a regalarle algo a <strong style={{color:T.accent}}>{listOwner}</strong>, necesitamos saber quién eres.
-        </p>
-        <GBtn onClick={onLogin} label="Continuar con Google" full/>
-        <div style={{fontSize:12,color:T.light,margin:"12px 0 16px"}}>Solo un clic · Sin contraseña</div>
-        <button className="btn" onClick={onClose} style={{color:T.muted,fontSize:14,background:"none",textDecoration:"underline"}}>Cancelar</button>
-      </div>
-    </div>
-  );
-}
-
-function AfterPick({ item, userName, onClose }) {
-  const link = `https://wannit.app/${userName.toLowerCase().replace(/\s+/g,"-")}`;
-  const [copied,setCopied] = useState(false);
-  return (
-    <div className="fade-up" style={{marginTop:14,background:T.surface2,borderRadius:16,padding:16,border:"1px solid #EBEBEB"}}>
-      <div style={{fontWeight:700,color:T.text,fontSize:15,marginBottom:12}}>¡Anotado como tuyo! 🎉</div>
-      {item.link && (
-        <a href={item.link} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:T.text,color:"white",borderRadius:12,padding:"14px",textDecoration:"none",fontWeight:700,fontSize:14,marginBottom:12,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
-          <ShoppingBag size={16}/>Ir a comprarlo ahora
-        </a>
-      )}
-      <div style={{background:T.surface,borderRadius:12,padding:14,border:"1px solid #EBEBEB",marginBottom:10}}>
-        <div style={{fontWeight:700,fontSize:13,color:T.text,marginBottom:6}}>¿Quieres coordinarte con alguien? 🤝</div>
-        <div style={{fontSize:12,color:T.muted,marginBottom:10,lineHeight:1.5}}>Comparte el link para que otros amigos vean qué falta.</div>
-        <div style={{display:"flex",gap:8}}>
-          <div style={{flex:1,background:T.surface2,borderRadius:8,padding:"8px 10px",fontSize:11,color:T.muted,wordBreak:"break-all"}}>{link}</div>
-          <button className="btn" onClick={()=>{setCopied(true);setTimeout(()=>setCopied(false),2200);}} style={{background:copied?"#10B981":T.text,color:"white",borderRadius:8,padding:"8px 12px",fontSize:12,flexShrink:0,transition:"background .3s"}}>
-            {copied?<Check size={12}/>:<Copy size={12}/>}
-          </button>
-        </div>
-      </div>
-      <button className="btn" onClick={onClose} style={{color:T.muted,fontSize:13,background:"none",textDecoration:"underline",width:"100%"}}>Volver a la lista</button>
-    </div>
-  );
-}
-
+/* ══ OWNER CARD ══ */
 function OwnerCard({ item, onEdit, onDelete }) {
   const pr = PRIORITIES[item.priority];
   const [lb,setLb] = useState(false);
   return (
     <>
       {lb && <Lightbox src={item.photo} onClose={()=>setLb(false)}/>}
-      <div className="aircard pop-in" style={{overflow:"hidden"}}>
+      <div className="aircard pop-in">
         {item.photo ? (
           <div onClick={()=>setLb(true)} style={{height:160,cursor:"zoom-in",position:"relative",background:"#F0F0F0"}}>
             <img src={item.photo} alt="ref" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-            <div style={{position:"absolute",top:10,right:10,background:"rgba(0,0,0,0.5)",borderRadius:20,padding:"3px 10px",fontSize:11,color:"white",fontWeight:600}}>📷 Ver foto</div>
           </div>
         ) : (
           <div style={{height:80,background:`linear-gradient(135deg,${item.color}22,${item.color}08)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36}}>{item.emoji}</div>
@@ -485,7 +406,8 @@ function OwnerCard({ item, onEdit, onDelete }) {
   );
 }
 
-function FriendCard({ item, onTake, onRequestLogin, isLoggedIn, userName }) {
+/* ══ FRIEND CARD ══ */
+function FriendCard({ item, onTake, userName }) {
   const [step,setStep] = useState("idle");
   const [name,setName] = useState("");
   const [lb,setLb] = useState(false);
@@ -493,13 +415,10 @@ function FriendCard({ item, onTake, onRequestLogin, isLoggedIn, userName }) {
   return (
     <>
       {lb && <Lightbox src={item.photo} onClose={()=>setLb(false)}/>}
-      <div className="aircard pop-in" style={{opacity:item.taken?.65:1}}>
+      <div className="aircard pop-in" style={{opacity:item.taken?0.65:1}}>
         {item.photo && !item.taken ? (
           <div onClick={()=>setLb(true)} style={{height:160,cursor:"zoom-in",position:"relative",background:"#F0F0F0"}}>
             <img src={item.photo} alt="ref" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-            <div style={{position:"absolute",inset:0,background:"linear-gradient(to top,rgba(0,0,0,0.3) 0%,transparent 50%)",display:"flex",alignItems:"flex-end",padding:"12px 14px"}}>
-              <span style={{color:"white",fontSize:12,fontWeight:600}}>📷 Toca para ver la referencia</span>
-            </div>
           </div>
         ) : (
           <div style={{height:80,background:item.taken?"#F5F5F5":`linear-gradient(135deg,${item.color}22,${item.color}08)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:36,filter:item.taken?"grayscale(1)":"none"}}>{item.emoji}</div>
@@ -513,14 +432,13 @@ function FriendCard({ item, onTake, onRequestLogin, isLoggedIn, userName }) {
           <div style={{fontWeight:700,fontSize:15,color:item.taken?T.muted:T.text,textDecoration:item.taken?"line-through":"none",marginBottom:4}}>{item.name}</div>
           <div style={{fontSize:12,color:T.muted,marginBottom:6}}>{item.category}</div>
           {!item.taken && item.price>0 && <div style={{fontWeight:700,fontSize:15,color:T.text,marginBottom:8}}>{fmt(item.price)} CLP</div>}
-          {!item.taken && item.description && (
-            <div style={{fontSize:13,color:T.sub,lineHeight:1.55,borderTop:"1px solid #EBEBEB",paddingTop:10,marginTop:6,fontStyle:"italic",marginBottom:8}}>"{item.description}"</div>
-          )}
           {!item.taken && step==="idle" && (
             <div style={{display:"flex",gap:10,marginTop:4,flexWrap:"wrap"}}>
-              <button className="btn" onClick={()=>isLoggedIn?setStep("name"):onRequestLogin()} style={{flex:1,background:T.accent,color:"white",borderRadius:10,padding:"12px",fontSize:14,fontWeight:700}}><Gift size={15}/>Quiero regalar esto</button>
+              <button className="btn" onClick={()=>setStep("name")} style={{flex:1,background:T.accent,color:"white",borderRadius:10,padding:"12px",fontSize:14,fontWeight:700}}>
+                <Gift size={15}/>Quiero regalar esto
+              </button>
               {item.link && (
-                <a href={item.link} target="_blank" rel="noreferrer" style={{flex:1,background:T.surface2,color:T.text,border:"1px solid #EBEBEB",borderRadius:10,padding:"12px",textDecoration:"none",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:6,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>
+                <a href={item.link} target="_blank" rel="noreferrer" style={{flex:1,background:T.surface2,color:T.text,border:"1px solid #EBEBEB",borderRadius:10,padding:"12px",textDecoration:"none",fontWeight:600,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
                   <ShoppingBag size={15}/>Ver en tienda
                 </a>
               )}
@@ -528,7 +446,7 @@ function FriendCard({ item, onTake, onRequestLogin, isLoggedIn, userName }) {
           )}
           {!item.taken && step==="name" && (
             <div className="fade-up" style={{marginTop:12}}>
-              <div style={{fontSize:13,color:T.muted,marginBottom:8}}>¿Cómo te llamas? (para que no se dupliquen regalos)</div>
+              <div style={{fontSize:13,color:T.muted,marginBottom:8}}>¿Cómo te llamas?</div>
               <div style={{display:"flex",gap:8}}>
                 <input value={name} onChange={e=>setName(e.target.value)} placeholder="Tu nombre..." style={{...fs,flex:1,padding:"11px 14px",fontSize:14}}/>
                 <button className="btn" onClick={()=>{if(name.trim()){onTake(item.id,name.trim());setStep("done");}}} style={{background:T.accent,color:"white",borderRadius:10,padding:"11px 16px"}}><Check size={16}/></button>
@@ -536,13 +454,23 @@ function FriendCard({ item, onTake, onRequestLogin, isLoggedIn, userName }) {
               </div>
             </div>
           )}
-          {step==="done" && <AfterPick item={item} userName={userName} onClose={()=>setStep("idle")}/>}
+          {step==="done" && (
+            <div className="fade-up" style={{marginTop:14,background:T.surface2,borderRadius:16,padding:16,border:"1px solid #EBEBEB"}}>
+              <div style={{fontWeight:700,color:T.text,fontSize:15,marginBottom:8}}>¡Anotado como tuyo! 🎉</div>
+              {item.link && (
+                <a href={item.link} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,background:T.text,color:"white",borderRadius:12,padding:"14px",textDecoration:"none",fontWeight:700,fontSize:14}}>
+                  <ShoppingBag size={16}/>Ir a comprarlo
+                </a>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </>
   );
 }
 
+/* ══ LISTS SCREEN ══ */
 function ListsScreen({ lists, user, onSelect, onNew, onEdit, onDelete, onLogout }) {
   return (
     <div style={{minHeight:"100vh",background:T.bg}}>
@@ -553,9 +481,9 @@ function ListsScreen({ lists, user, onSelect, onNew, onEdit, onDelete, onLogout 
             <span style={{fontWeight:800,fontSize:20,color:T.accent,letterSpacing:"-0.5px"}}>wannit</span>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:12}}>
-            <div style={{display:"flex",alignItems:"center",gap:10,border:"1px solid #DCDCDC",borderRadius:30,padding:"8px 12px 8px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.08)",cursor:"pointer"}}>
-              <span style={{fontSize:13,fontWeight:600,color:T.text}}>{user.name}</span>
-              <div style={{width:30,height:30,borderRadius:"50%",background:"linear-gradient(135deg,#FF385C,#6366F1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,color:"white",fontWeight:700}}>{user.name[0]}</div>
+            <div style={{display:"flex",alignItems:"center",gap:10,border:"1px solid #DCDCDC",borderRadius:30,padding:"8px 12px 8px 16px",boxShadow:"0 1px 4px rgba(0,0,0,0.08)"}}>
+              {user.photoURL && <img src={user.photoURL} alt="" style={{width:30,height:30,borderRadius:"50%"}}/>}
+              <span style={{fontSize:13,fontWeight:600,color:T.text}}>{user.displayName?.split(" ")[0]}</span>
             </div>
             <button className="btn" onClick={onLogout} style={{background:"none",color:T.muted,fontSize:13,fontWeight:500}}>Salir</button>
           </div>
@@ -568,24 +496,17 @@ function ListsScreen({ lists, user, onSelect, onNew, onEdit, onDelete, onLogout 
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:24,marginBottom:32}}>
           {lists.map((list,i)=>{
-            const taken = list.items.filter(it=>it.taken).length;
-            const pct = list.items.length ? Math.round(taken/list.items.length*100) : 0;
+            const taken = list.items?.filter(it=>it.taken).length || 0;
+            const total = list.items?.length || 0;
+            const pct = total ? Math.round(taken/total*100) : 0;
             const color = ["#FF385C","#6366F1","#10B981","#F59E0B"][i%4];
-            const emojis = list.items.slice(0,4).map(it=>it.emoji);
             return (
               <div key={list.id} className="aircard" style={{cursor:"pointer"}} onClick={()=>onSelect(list.id)}>
                 <div style={{height:160,background:`linear-gradient(135deg,${color}33,${color}11)`,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden"}}>
                   <div style={{fontSize:52,animation:"floatY 3s ease-in-out infinite"}}>{list.event.split(" ")[0]}</div>
-                  {emojis.length>0 && (
-                    <div style={{position:"absolute",bottom:12,left:14,display:"flex",gap:4}}>
-                      {emojis.map((e,j)=>(
-                        <div key={j} style={{width:32,height:32,borderRadius:"50%",background:"white",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,boxShadow:"0 1px 4px rgba(0,0,0,0.1)",marginLeft:j>0?-8:0}}>{e}</div>
-                      ))}
-                    </div>
-                  )}
                   <div style={{position:"absolute",top:10,right:10,display:"flex",gap:6}} onClick={e=>e.stopPropagation()}>
-                    <button className="btn" onClick={()=>onEdit(list)} style={{background:"rgba(255,255,255,0.9)",borderRadius:8,padding:"5px 7px",boxShadow:"0 1px 3px rgba(0,0,0,0.1)"}}><Settings size={13}/></button>
-                    <button className="btn" onClick={()=>onDelete(list.id)} style={{background:"rgba(255,255,255,0.9)",borderRadius:8,padding:"5px 7px",boxShadow:"0 1px 3px rgba(0,0,0,0.1)"}}><Trash2 size={13} color="#EF4444"/></button>
+                    <button className="btn" onClick={()=>onEdit(list)} style={{background:"rgba(255,255,255,0.9)",borderRadius:8,padding:"5px 7px"}}><Settings size={13}/></button>
+                    <button className="btn" onClick={()=>onDelete(list.id)} style={{background:"rgba(255,255,255,0.9)",borderRadius:8,padding:"5px 7px"}}><Trash2 size={13} color="#EF4444"/></button>
                   </div>
                 </div>
                 <div style={{padding:"14px 16px 16px"}}>
@@ -595,7 +516,7 @@ function ListsScreen({ lists, user, onSelect, onNew, onEdit, onDelete, onLogout 
                     <div style={{flex:1,background:T.surface2,borderRadius:20,height:4,overflow:"hidden"}}>
                       <div style={{width:`${pct}%`,height:"100%",background:color,borderRadius:20,transition:"width .5s"}}/>
                     </div>
-                    <span style={{fontSize:12,color:T.muted,fontWeight:500,flexShrink:0}}>{taken}/{list.items.length} elegidos</span>
+                    <span style={{fontSize:12,color:T.muted,fontWeight:500,flexShrink:0}}>{taken}/{total} elegidos</span>
                   </div>
                 </div>
               </div>
@@ -614,20 +535,39 @@ function ListsScreen({ lists, user, onSelect, onNew, onEdit, onDelete, onLogout 
   );
 }
 
-function ListDetail({ list, user, onBack, onUpdate, isShared, viewMode, setViewMode }) {
-  const [items,setItems] = useState(list.items);
+/* ══ LIST DETAIL ══ */
+function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }) {
+  const [items,setItems] = useState(list.items||[]);
   const [modal,setModal] = useState(null);
   const [editItem,setEditItem] = useState(null);
   const [shareOpen,setShareOpen] = useState(false);
-  const [loginModal,setLoginModal] = useState(false);
   const [filterP,setFilterP] = useState("todo");
   const [sortBy,setSortBy] = useState("priority");
   const [confetti,setConfetti] = useState(false);
 
-  useEffect(()=>{ onUpdate({...list,items}); },[items]);
   const burst = () => { setConfetti(true); setTimeout(()=>setConfetti(false),1400); };
-  const saveItem = item => { setItems(prev=>prev.find(i=>i.id===item.id)?prev.map(i=>i.id===item.id?item:i):[...prev,item]); setModal(null); setEditItem(null); burst(); };
-  const takeItem = (id,by) => { setItems(prev=>prev.map(i=>i.id===id?{...i,taken:true,takenBy:by}:i)); burst(); };
+
+  const saveItem = async item => {
+    const updated = items.find(i=>i.id===item.id)
+      ? items.map(i=>i.id===item.id?item:i)
+      : [...items,item];
+    setItems(updated);
+    await onUpdateItems(list.id, updated);
+    setModal(null); setEditItem(null); burst();
+  };
+
+  const deleteItem = async id => {
+    const updated = items.filter(i=>i.id!==id);
+    setItems(updated);
+    await onUpdateItems(list.id, updated);
+  };
+
+  const takeItem = async (id,by) => {
+    const updated = items.map(i=>i.id===id?{...i,taken:true,takenBy:by}:i);
+    setItems(updated);
+    await onUpdateItems(list.id, updated);
+    burst();
+  };
 
   const filtered = items
     .filter(i=>{
@@ -638,6 +578,7 @@ function ListDetail({ list, user, onBack, onUpdate, isShared, viewMode, setViewM
     })
     .sort((a,b)=>sortBy==="priority"?a.priority-b.priority:b.price-a.price);
 
+  const isShared = viewMode==="shared";
   const stats = { total:items.length, taken:items.filter(i=>i.taken).length };
   const pct = stats.total ? Math.round(stats.taken/stats.total*100) : 0;
 
@@ -646,11 +587,7 @@ function ListDetail({ list, user, onBack, onUpdate, isShared, viewMode, setViewM
       <Confetti active={confetti}/>
       <nav style={{background:T.surface,borderBottom:"1px solid #EBEBEB",position:"sticky",top:0,zIndex:40}}>
         <div style={{maxWidth:960,margin:"0 auto",padding:"0 24px",display:"flex",alignItems:"center",gap:14,height:72}}>
-          {!isShared && (
-            <button className="btn" onClick={onBack} style={{background:T.surface2,borderRadius:"50%",width:38,height:38}}>
-              <ArrowLeft size={18}/>
-            </button>
-          )}
+          <button className="btn" onClick={onBack} style={{background:T.surface2,borderRadius:"50%",width:38,height:38}}><ArrowLeft size={18}/></button>
           <div style={{display:"flex",alignItems:"center",gap:8,flex:1}}>
             <Logo size={30}/>
             <span style={{fontWeight:800,fontSize:18,color:T.accent}}>wannit</span>
@@ -675,24 +612,13 @@ function ListDetail({ list, user, onBack, onUpdate, isShared, viewMode, setViewM
       </nav>
       <div style={{background:T.surface,borderBottom:"1px solid #EBEBEB"}}>
         <div style={{maxWidth:960,margin:"0 auto",padding:"28px 24px"}}>
-          {isShared ? (
-            <div style={{display:"flex",alignItems:"center",gap:20}}>
-              <div style={{width:72,height:72,borderRadius:20,flexShrink:0,background:"linear-gradient(135deg,#FF385C,#6366F1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:34,animation:"floatY 3s ease-in-out infinite",boxShadow:"0 8px 24px rgba(255,56,92,0.3)"}}>{list.event.split(" ")[0]}</div>
-              <div>
-                <div style={{fontSize:13,fontWeight:600,color:T.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{list.event}</div>
-                <h1 style={{fontWeight:800,fontSize:28,color:T.text,lineHeight:1.1,marginBottom:4}}>Lista de <span style={{color:T.accent}}>{user.name}</span></h1>
-                {list.date && <div style={{fontSize:14,color:T.muted,display:"flex",alignItems:"center",gap:6}}><Calendar size={13}/>{fmtDate(list.date)}</div>}
-              </div>
+          <div style={{display:"flex",alignItems:"center",gap:16}}>
+            <div style={{fontSize:32}}>{list.event.split(" ")[0]}</div>
+            <div>
+              <h2 style={{fontWeight:700,fontSize:20,color:T.text}}>{list.event}</h2>
+              {list.date && <div style={{fontSize:13,color:T.muted,display:"flex",alignItems:"center",gap:5,marginTop:2}}><Calendar size={12}/>{fmtDate(list.date)}</div>}
             </div>
-          ) : (
-            <div style={{display:"flex",alignItems:"center",gap:16}}>
-              <div style={{fontSize:32}}>{list.event.split(" ")[0]}</div>
-              <div>
-                <h2 style={{fontWeight:700,fontSize:20,color:T.text}}>{list.event}</h2>
-                {list.date && <div style={{fontSize:13,color:T.muted,display:"flex",alignItems:"center",gap:5,marginTop:2}}><Calendar size={12}/>{fmtDate(list.date)}</div>}
-              </div>
-            </div>
-          )}
+          </div>
           {list.message && <p style={{marginTop:14,fontSize:15,color:T.sub,lineHeight:1.6,fontStyle:"italic",borderTop:"1px solid #EBEBEB",paddingTop:14}}>"{list.message}"</p>}
         </div>
       </div>
@@ -721,8 +647,8 @@ function ListDetail({ list, user, onBack, onUpdate, isShared, viewMode, setViewM
           {filtered.map((item,i)=>(
             <div key={item.id} style={{animationDelay:`${i*.05}s`}}>
               {isShared
-                ? <FriendCard item={item} onTake={takeItem} userName={user.name} isLoggedIn={true} onRequestLogin={()=>setLoginModal(true)}/>
-                : <OwnerCard item={item} onEdit={it=>{setEditItem(it);setModal("edit");}} onDelete={id=>setItems(prev=>prev.filter(i=>i.id!==id))}/>
+                ? <FriendCard item={item} onTake={takeItem} userName={user.displayName}/>
+                : <OwnerCard item={item} onEdit={it=>{setEditItem(it);setModal("edit");}} onDelete={deleteItem}/>
               }
             </div>
           ))}
@@ -730,22 +656,19 @@ function ListDetail({ list, user, onBack, onUpdate, isShared, viewMode, setViewM
       </div>
       {!isShared && (
         <button className="btn" onClick={()=>{setEditItem(null);setModal("add");}} style={{
-          position:"fixed", bottom:28, right:28,
-          background:T.accent, color:"white",
-          borderRadius:30, padding:"14px 24px",
-          fontSize:15, fontWeight:700,
-          boxShadow:"0 6px 20px rgba(255,56,92,0.4)",
-          zIndex:100,
+          position:"fixed", bottom:28, right:28, background:T.accent, color:"white",
+          borderRadius:30, padding:"14px 24px", fontSize:15, fontWeight:700,
+          boxShadow:"0 6px 20px rgba(255,56,92,0.4)", zIndex:100,
         }}><Plus size={18}/>Agregar deseo</button>
       )}
       {modal==="add"  && <ItemModal item={null} onSave={saveItem} onClose={()=>setModal(null)}/>}
       {modal==="edit" && <ItemModal item={editItem} onSave={saveItem} onClose={()=>{setModal(null);setEditItem(null);}}/>}
-      {shareOpen      && <ShareModal list={list} userName={user.name} onClose={()=>setShareOpen(false)}/>}
-      {loginModal     && <LoginModal listOwner={user.name} onLogin={()=>setLoginModal(false)} onClose={()=>setLoginModal(false)}/>}
+      {shareOpen && <ShareModal list={list} userName={user.displayName} onClose={()=>setShareOpen(false)}/>}
     </div>
   );
 }
 
+/* ══ LANDING ══ */
 function Landing({ onLogin }) {
   return (
     <div style={{minHeight:"100vh",background:T.bg}}>
@@ -762,8 +685,7 @@ function Landing({ onLogin }) {
             <span>🇨🇱</span> Hecho en Chile · Gratis para siempre
           </div>
           <h1 style={{fontWeight:800,fontSize:"clamp(32px,6vw,52px)",color:T.text,lineHeight:1.08,marginBottom:20}}>
-            Di lo que quieres.<br/>
-            Recibe lo que quieres.<br/>
+            Di lo que quieres.<br/>Recibe lo que quieres.<br/>
             <span style={{color:T.accent}}>Wannit.</span>
           </h1>
           <p style={{fontSize:18,color:T.muted,maxWidth:440,margin:"0 auto 36px",lineHeight:1.6}}>
@@ -777,9 +699,9 @@ function Landing({ onLogin }) {
         <h2 style={{fontWeight:800,fontSize:28,color:T.text,textAlign:"center",marginBottom:48}}>¿Cómo funciona?</h2>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:32}}>
           {[
-            {emoji:"🎁",title:"Arma tu lista",text:"Agrega lo que quieres con foto, precio y link. O describe algo que viste en la calle."},
+            {emoji:"🎁",title:"Arma tu lista",text:"Agrega lo que quieres con foto, precio y link."},
             {emoji:"🔗",title:"Comparte el link",text:"Un link directo. Tus amigos lo abren sin instalar nada."},
-            {emoji:"🔒",title:"Sin spoilers",text:"Tus amigos marcan su regalo en secreto. Tú no ves quién regala qué."},
+            {emoji:"🔒",title:"Sin spoilers",text:"Tus amigos marcan su regalo en secreto."},
             {emoji:"🤝",title:"Coordínense",text:"Varios amigos pueden juntarse para regalar algo más grande."},
           ].map((f,i)=>(
             <div key={i} style={{textAlign:"center"}}>
@@ -787,15 +709,6 @@ function Landing({ onLogin }) {
               <div style={{fontWeight:700,fontSize:17,color:T.text,marginBottom:8}}>{f.title}</div>
               <div style={{fontSize:14,color:T.muted,lineHeight:1.65}}>{f.text}</div>
             </div>
-          ))}
-        </div>
-      </div>
-      <div style={{borderTop:"1px solid #EBEBEB",maxWidth:960,margin:"0 auto"}}/>
-      <div style={{maxWidth:960,margin:"0 auto",padding:"48px 24px",textAlign:"center"}}>
-        <div style={{fontSize:13,fontWeight:600,color:T.muted,textTransform:"uppercase",letterSpacing:1.5,marginBottom:20}}>Funciona para cualquier evento</div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:10,justifyContent:"center"}}>
-          {EVENTS.map(e=>(
-            <div key={e} style={{background:T.surface2,borderRadius:30,padding:"8px 18px",fontSize:14,fontWeight:500,color:T.sub,border:"1px solid #EBEBEB"}}>{e}</div>
           ))}
         </div>
       </div>
@@ -808,7 +721,7 @@ function Landing({ onLogin }) {
         <div style={{maxWidth:960,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
           <div style={{display:"flex",alignItems:"center",gap:8}}><Logo size={24}/><span style={{fontWeight:700,fontSize:15,color:T.accent}}>wannit</span></div>
           <p style={{fontSize:13,color:T.muted,maxWidth:420,lineHeight:1.6}}>
-            🐦 Anita se aburrió de recibir lo que no quería. Creó wannit para que tus amigos siempre sepan exactamente qué regalarte — como si les hubiera contado un pajarito.
+            🐦 Anita se aburrió de recibir lo que no quería. Creó wannit para que tus amigos siempre sepan exactamente qué regalarte.
           </p>
           <span style={{fontSize:12,color:T.light}}>Hecho con ❤️ en Chile · {new Date().getFullYear()}</span>
         </div>
@@ -817,47 +730,102 @@ function Landing({ onLogin }) {
   );
 }
 
+/* ══ ROOT ══ */
 export default function WannitApp() {
   useEffect(()=>{ injectStyles(); },[]);
-  const [screen,setScreen]   = useState("landing");
-  const [user,setUser]       = useState(null);
-  const [lists,setLists]     = useState(SEED);
+  const [user,setUser] = useState(null);
+  const [loading,setLoading] = useState(true);
+  const [lists,setLists] = useState([]);
   const [activeId,setActiveId] = useState(null);
   const [listModal,setListModal] = useState(null);
   const [viewMode,setViewMode] = useState("owner");
 
-  const handleLogin = () => { setUser({name:"Anita",email:"anita@gmail.com"}); setScreen("app"); };
-  const updateList  = updated => setLists(prev=>prev.map(l=>l.id===updated.id?updated:l));
-  const activeList  = lists.find(l=>l.id===activeId);
+  // Auth listener
+  useEffect(()=>{
+    const unsub = onAuthStateChanged(auth, u => {
+      setUser(u);
+      setLoading(false);
+    });
+    return unsub;
+  },[]);
 
-  if (screen==="app" && activeList) {
-    return (
-      <ListDetail
-        list={activeList} user={user}
-        isShared={viewMode==="shared"}
-        viewMode={viewMode} setViewMode={setViewMode}
-        onBack={()=>{ setActiveId(null); setViewMode("owner"); }}
-        onUpdate={updateList}
+  // Firestore listener
+  useEffect(()=>{
+    if (!user) return;
+    const q = query(collection(db,"lists"), where("uid","==",user.uid));
+    const unsub = onSnapshot(q, snap => {
+      setLists(snap.docs.map(d=>({id:d.id,...d.data()})));
+    });
+    return unsub;
+  },[user]);
+
+  const handleLogin = async () => {
+    try { await signInWithPopup(auth, provider); }
+    catch(e) { console.error(e); }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    setUser(null);
+    setActiveId(null);
+  };
+
+  const createList = async (data) => {
+    await addDoc(collection(db,"lists"), {
+      ...data, uid:user.uid, items:[], createdAt:Date.now()
+    });
+    setListModal(null);
+  };
+
+  const updateList = async (id, data) => {
+    await updateDoc(doc(db,"lists",id), data);
+    setListModal(null);
+  };
+
+  const deleteList = async (id) => {
+    await deleteDoc(doc(db,"lists",id));
+  };
+
+  const updateItems = async (listId, items) => {
+    await updateDoc(doc(db,"lists",listId), { items });
+  };
+
+  if (loading) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg}}>
+      <div style={{textAlign:"center"}}>
+        <Logo size={56}/>
+        <div style={{marginTop:16,fontSize:16,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Cargando...</div>
+      </div>
+    </div>
+  );
+
+  if (!user) return <Landing onLogin={handleLogin}/>;
+
+  const activeList = lists.find(l=>l.id===activeId);
+
+  if (activeList) return (
+    <ListDetail
+      list={activeList} user={user}
+      viewMode={viewMode} setViewMode={setViewMode}
+      onBack={()=>{ setActiveId(null); setViewMode("owner"); }}
+      onUpdateItems={updateItems}
+    />
+  );
+
+  return (
+    <>
+      <ListsScreen
+        lists={lists} user={user}
+        onSelect={id=>setActiveId(id)}
+        onNew={()=>setListModal("new")}
+        onEdit={list=>setListModal(list)}
+        onDelete={deleteList}
+        onLogout={handleLogout}
       />
-    );
-  }
-
-  if (screen==="app") {
-    return (
-      <>
-        <ListsScreen
-          lists={lists} user={user}
-          onSelect={id=>setActiveId(id)}
-          onNew={()=>setListModal("new")}
-          onEdit={list=>setListModal(list)}
-          onDelete={id=>setLists(prev=>prev.filter(l=>l.id!==id))}
-          onLogout={()=>{ setUser(null); setScreen("landing"); }}
-        />
-        {listModal==="new" && <ListModal onSave={l=>{ setLists(prev=>[...prev,{...l,items:[]}]); setListModal(null); }} onClose={()=>setListModal(null)}/>}
-        {listModal && listModal!=="new" && <ListModal list={listModal} onSave={l=>{ setLists(prev=>prev.map(x=>x.id===l.id?{...x,...l}:x)); setListModal(null); }} onClose={()=>setListModal(null)}/>}
-      </>
-    );
-  }
-
-  return <Landing onLogin={handleLogin}/>;
+      {listModal==="new" && <ListModal onSave={createList} onClose={()=>setListModal(null)}/>}
+      {listModal && listModal!=="new" && (
+        <ListModal list={listModal} onSave={data=>updateList(listModal.id,data)} onClose={()=>setListModal(null)}/>
+      )}
+    </>
+  );
 }
