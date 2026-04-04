@@ -107,7 +107,7 @@ function PillBtn({ label, active, onClick }) {
 function Swatch({ color, selected, onClick }) {
   return (
     <div onClick={onClick} style={{
-      width:24, height:24, borderRadius:"50%", background:color, cursor:"pointer",
+      width:20, height:20, borderRadius:"50%", background:color, cursor:"pointer",
       boxShadow:selected?`0 0 0 2px white, 0 0 0 4px ${color}`:"none", transition:"box-shadow .15s",
     }}/>
   );
@@ -212,7 +212,7 @@ function ItemModal({ item, onSave, onClose }) {
             <EmojiPick value={f.emoji} onChange={v=>set("emoji",v)}/>
             <div>
               <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:8,textTransform:"uppercase",letterSpacing:.8}}>Color</div>
-              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <div style={{display:"flex",gap:6,flexWrap:"nowrap"}}>
                 {ICOLORS.map(c=><Swatch key={c} color={c} selected={f.color===c} onClick={()=>set("color",c)}/>)}
               </div>
             </div>
@@ -284,7 +284,6 @@ function ItemModal({ item, onSave, onClose }) {
           </div>
           <button className="btn" onClick={()=>{
             if(!f.name.trim()) return;
-            if(!f.link && !f.description && !f.photo) { alert("Agrega al menos un link, descripción o foto"); return; }
             onSave({...f, id:f.id||uid(), price:Number(f.price)||0});
           }} style={{width:"100%",background:T.text,color:"white",borderRadius:12,padding:"16px",fontSize:16,fontWeight:700}}>
             {item?.id?"Guardar cambios":"Agregar a mi lista 🎁"}
