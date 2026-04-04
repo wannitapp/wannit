@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { Gift, Pencil, Trash2, Share2, Plus, Lock, ShoppingBag, Copy, X, Check, Star, Settings, PlusCircle, ArrowLeft, Calendar, Link, MessageSquare } from "lucide-react";
 import { auth, provider, db } from "./firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where } from "firebase/firestore";
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDoc } from "firebase/firestore";
 
 /* ══ STYLES ══ */
 const injectStyles = () => {
@@ -331,8 +332,8 @@ function ListModal({ list, onSave, onClose }) {
 }
 
 /* ══ SHARE MODAL ══ */
-function ShareModal({ list, userName, onClose }) {
-  const link = `https://wannit.cl/${userName.toLowerCase().replace(/\s+/g,"-")}-${list.event.split(" ")[1]?.toLowerCase()||"lista"}`;
+function ShareModal({ list, onClose }) {
+  const link = `${window.location.origin}/lista/${list.id}`;
   const [copied,setCopied] = useState(false);
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:500,backdropFilter:"blur(4px)"}}>
@@ -663,7 +664,7 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
       )}
       {modal==="add"  && <ItemModal item={null} onSave={saveItem} onClose={()=>setModal(null)}/>}
       {modal==="edit" && <ItemModal item={editItem} onSave={saveItem} onClose={()=>{setModal(null);setEditItem(null);}}/>}
-      {shareOpen && <ShareModal list={list} userName={user.displayName} onClose={()=>setShareOpen(false)}/>}
+      {shareOpen && <ShareModal list={list} onClose={()=>setShareOpen(false)}/>}
     </div>
   );
 }
@@ -731,7 +732,94 @@ function Landing({ onLogin }) {
 }
 
 /* ══ ROOT ══ */
-export default function WannitApp() {
+function SharedListPage() {
+  const { listId } = useParams();
+  const [list,setList] = useState(null);
+  const [loading,setLoading] = useState(true);
+  const [notFound,setNotFound] = useState(false);
+  const [filterP,setFilterP] = useState("todo");
+  const [confetti,setConfetti] = useState(false);
+
+  useEffect(()=>{
+    getDoc(doc(db,"lists",listId)).then(snap=>{
+      if(!snap.exists()){setNotFound(true);setLoading(false);return;}
+      setList({id:snap.id,...snap.data()});
+      setLoading(false);
+    }).catch(()=>{setNotFound(true);setLoading(false);});
+  },[listId]);
+
+  const takeItem = async (id,by) => {
+    const updated = list.items.map(i=>i.id===id?{...i,taken:true,takenBy:by}:i);
+    await updateDoc(doc(db,"lists",listId),{items:updated});
+    setList(prev=>({...prev,items:updated}));
+    setConfetti(true);
+    setTimeout(()=>setConfetti(false),1400);
+  };
+
+  if(loading) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg}}>
+      <div style={{textAlign:"center"}}><Logo size={56}/><div style={{marginTop:16,fontSize:16,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Cargando...</div></div>
+    </div>
+  );
+
+  if(notFound) return (
+    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg}}>
+      <div style={{textAlign:"center",padding:24}}>
+        <div style={{fontSize:64,marginBottom:16}}>🎁</div>
+        <div style={{fontWeight:800,fontSize:24,color:T.text,marginBottom:8}}>Lista no encontrada</div>
+        <div style={{color:T.muted,fontSize:15}}>El link puede haber expirado o estar incorrecto.</div>
+      </div>
+    </div>
+  );
+
+  const filtered = (list.items||[]).filter(i=>{
+    if(filterP==="u50"&&i.price>=50000) return false;
+    if(filterP==="m50"&&(i.price<50000||i.price>100000)) return false;
+    if(filterP==="o100"&&i.price<=100000) return false;
+    return true;
+  });
+
+  return (
+    <div style={{minHeight:"100vh",background:T.bg}}>
+      <Confetti active={confetti}/>
+      <nav style={{background:T.surface,borderBottom:"1px solid #EBEBEB",position:"sticky",top:0,zIndex:40}}>
+        <div style={{maxWidth:960,margin:"0 auto",padding:"0 24px",display:"flex",alignItems:"center",gap:8,height:72}}>
+          <Logo size={30}/>
+          <span style={{fontWeight:800,fontSize:18,color:T.accent}}>wannit</span>
+        </div>
+      </nav>
+      <div style={{background:T.surface,borderBottom:"1px solid #EBEBEB"}}>
+        <div style={{maxWidth:960,margin:"0 auto",padding:"28px 24px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:20}}>
+            <div style={{width:72,height:72,borderRadius:20,background:"linear-gradient(135deg,#FF385C,#6366F1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:34,animation:"floatY 3s ease-in-out infinite",boxShadow:"0 8px 24px rgba(255,56,92,0.3)"}}>{list.event.split(" ")[0]}</div>
+            <div>
+              <div style={{fontSize:13,fontWeight:600,color:T.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{list.event}</div>
+              <h1 style={{fontWeight:800,fontSize:28,color:T.text,lineHeight:1.1}}>Lista de regalos 🎁</h1>
+              {list.date && <div style={{fontSize:14,color:T.muted,marginTop:4}}>{fmtDate(list.date)}</div>}
+            </div>
+          </div>
+          {list.message && <p style={{marginTop:14,fontSize:15,color:T.sub,lineHeight:1.6,fontStyle:"italic",borderTop:"1px solid #EBEBEB",paddingTop:14}}>"{list.message}"</p>}
+        </div>
+      </div>
+      <div style={{background:T.surface,borderBottom:"1px solid #EBEBEB",position:"sticky",top:72,zIndex:30}}>
+        <div style={{maxWidth:960,margin:"0 auto",padding:"12px 24px",display:"flex",gap:8,overflowX:"auto"}}>
+          {PRANGES.map(([v,l])=><PillBtn key={v} label={l} active={filterP===v} onClick={()=>setFilterP(v)}/>)}
+        </div>
+      </div>
+      <div style={{maxWidth:960,margin:"0 auto",padding:"28px 24px 100px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:20}}>
+          {filtered.map((item,i)=>(
+            <div key={item.id} style={{animationDelay:`${i*.05}s`}}>
+              <FriendCard item={item} onTake={takeItem} userName=""/>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WannitApp() {
   useEffect(()=>{ injectStyles(); },[]);
   const [user,setUser] = useState(null);
   const [loading,setLoading] = useState(true);
@@ -799,7 +887,9 @@ export default function WannitApp() {
     </div>
   );
 
-  if (!user) return <Landing onLogin={handleLogin}/>;
+  if (!user) return (
+    <Landing onLogin={handleLogin}/>
+  );
 
   const activeList = lists.find(l=>l.id===activeId);
 
@@ -829,3 +919,18 @@ export default function WannitApp() {
     </>
   );
 }
+
+function AppWithRouter() {
+  useEffect(()=>{ injectStyles(); },[]);
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/lista/:listId" element={<SharedListPage/>}/>
+        <Route path="/*" element={<WannitApp/>}/>
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export { AppWithRouter };
+export default AppWithRouter;
