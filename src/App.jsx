@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Privacy from "./Privacy";
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { Gift, Pencil, Trash2, Share2, Plus, Lock, ShoppingBag, Copy, X, Check, Star, Settings, PlusCircle, ArrowLeft, Calendar, Link, MessageSquare } from "lucide-react";
 import { auth, provider, db } from "./firebase";
@@ -924,6 +925,7 @@ function AppWithRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/privacidad" element={<Privacy/>}/>
         <Route path="/lista/:listId" element={<SharedListPage/>}/>
         <Route path="/*" element={<WannitApp/>}/>
       </Routes>
