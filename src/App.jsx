@@ -1,38 +1,27 @@
 import { useState, useEffect } from "react";
-import Privacy from "./Privacy";
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { Gift, Pencil, Trash2, Share2, Plus, Lock, ShoppingBag, Copy, X, Check, Star, Settings, PlusCircle, ArrowLeft, Calendar, Link, MessageSquare } from "lucide-react";
 import { auth, provider, db } from "./firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDoc } from "firebase/firestore";
 
+/* ══ EMAIL HELPER ══ */
+const sendEmail = async (type, to, data) => {
+  try {
+    await fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, to, data }),
+    });
+  } catch(e) { console.error("Email error:", e); }
+};
+
 /* ══ STYLES ══ */
 const injectStyles = () => {
   if (document.getElementById("ws")) return;
   const s = document.createElement("style");
   s.id = "ws";
-  s.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Plus Jakarta Sans',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#222222}
-    @keyframes popIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-    @keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
-    @keyframes confettiFall{0%{transform:translateY(-16px) rotate(0deg);opacity:1}100%{transform:translateY(100px) rotate(400deg);opacity:0}}
-    .pop-in{animation:popIn .3s ease both}
-    .fade-up{animation:fadeUp .25s ease both}
-    .btn{font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;cursor:pointer;border:none;
-      transition:all .2s ease;display:inline-flex;align-items:center;justify-content:center;gap:7px}
-    .btn:hover{transform:scale(1.02)}
-    .btn:active{transform:scale(.98)}
-    .aircard{background:#fff;border-radius:24px;border:1px solid #EBEBEB;transition:box-shadow .2s,transform .2s;overflow:hidden}
-    .aircard:hover{box-shadow:0 6px 20px rgba(0,0,0,.12);transform:translateY(-2px)}
-    input,textarea{font-family:'Plus Jakarta Sans',sans-serif;font-weight:400}
-    input:focus,textarea:focus{outline:none;border-color:#222!important;box-shadow:none!important}
-    ::-webkit-scrollbar{width:4px}
-    ::-webkit-scrollbar-thumb{background:#ddd;border-radius:8px}
-    @media(max-width:600px){.hide-sm{display:none!important}}
-  `;
+  s.textContent = `@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'); *,*::before,*::after{box-sizing:border-box;margin:0;padding:0} body{font-family:'Plus Jakarta Sans',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#222222} @keyframes popIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}} @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}} @keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}} @keyframes confettiFall{0%{transform:translateY(-16px) rotate(0deg);opacity:1}100%{transform:translateY(100px) rotate(400deg);opacity:0}} .pop-in{animation:popIn .3s ease both} .fade-up{animation:fadeUp .25s ease both} .btn{font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;cursor:pointer;border:none; transition:all .2s ease;display:inline-flex;align-items:center;justify-content:center;gap:7px} .btn:hover{transform:scale(1.02)} .btn:active{transform:scale(.98)} .aircard{background:#fff;border-radius:24px;border:1px solid #EBEBEB;transition:box-shadow .2s,transform .2s;overflow:hidden} .aircard:hover{box-shadow:0 6px 20px rgba(0,0,0,.12);transform:translateY(-2px)} input,textarea{font-family:'Plus Jakarta Sans',sans-serif;font-weight:400} input:focus,textarea:focus{outline:none;border-color:#222!important;box-shadow:none!important} ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-thumb{background:#ddd;border-radius:8px} @media(max-width:600px){.hide-sm{display:none!important}}`;
   document.head.appendChild(s);
 };
 
@@ -186,7 +175,7 @@ const fs = {
 
 /* ══ ITEM MODAL ══ */
 function ItemModal({ item, onSave, onClose }) {
-  const blank = { name:"",category:CATEGORIES[0],price:"",link:"",priority:0,notes:"",color:ICOLORS[0],emoji:"🎁",taken:false,takenBy:"",description:"",photo:null };
+  const blank = { name:"",category:CATEGORIES[0],price:"",link:"",priority:0,notes:"",color:ICOLORS[0],emoji:"🎁",taken:false,takenBy:"",description:"",photo:null,activeTab:"link" };
   const [f,setF] = useState(item || blank);
   const set = (k,v) => setF(p=>({...p,[k]:v}));
 
@@ -213,13 +202,13 @@ function ItemModal({ item, onSave, onClose }) {
             <EmojiPick value={f.emoji} onChange={v=>set("emoji",v)}/>
             <div>
               <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:8,textTransform:"uppercase",letterSpacing:.8}}>Color</div>
-              <div style={{display:"flex",gap:6,flexWrap:"nowrap"}}>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {ICOLORS.map(c=><Swatch key={c} color={c} selected={f.color===c} onClick={()=>set("color",c)}/>)}
               </div>
             </div>
           </div>
           <div style={{marginBottom:16}}>
-            <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>¿Qué quieres? *</label>
+            <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>¿Qué quieres?</label>
             <input value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Ej: Sombrero de paja que vi en la calle" style={fs}/>
           </div>
           <div style={{marginBottom:20}}>
@@ -227,36 +216,37 @@ function ItemModal({ item, onSave, onClose }) {
             <input type="number" value={f.price} onChange={e=>set("price",e.target.value)} placeholder="50000" style={fs}/>
           </div>
           <div style={{borderTop:"1px solid #EBEBEB",marginBottom:20}}/>
-          <div style={{fontSize:15,fontWeight:700,color:T.text,marginBottom:4}}>¿Dónde lo encontraste?</div>
-          <div style={{fontSize:13,color:T.muted,marginBottom:16}}>Completa lo que tengas — link, descripción o foto</div>
           <div style={{marginBottom:16}}>
-            <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>
-              <div style={{width:28,height:28,borderRadius:8,background:"#EEF2FF",display:"flex",alignItems:"center",justifyContent:"center"}}><Link size={14} color="#6366F1"/></div>Link del producto
-            </label>
-            <input type="url" value={f.link} onChange={e=>set("link",e.target.value)} placeholder="https://falabella.com/..." style={fs}/>
-          </div>
-          <div style={{marginBottom:16}}>
-            <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>
-              <div style={{width:28,height:28,borderRadius:8,background:"#ECFDF5",display:"flex",alignItems:"center",justifyContent:"center"}}><MessageSquare size={14} color="#10B981"/></div>Lo vi en la calle / descripción
-            </label>
-            <textarea value={f.description} onChange={e=>set("description",e.target.value)} placeholder="Era un sombrero de paja ancho..." rows={3} style={{...fs,resize:"vertical",lineHeight:1.6}}/>
-          </div>
-          <div style={{marginBottom:20}}>
-            <label style={{display:"flex",alignItems:"center",gap:8,fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>
-              <div style={{width:28,height:28,borderRadius:8,background:"#FFF1F2",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>📷</div>Foto de referencia
-            </label>
-            {f.photo ? (
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+              <label style={{fontSize:13,fontWeight:600,color:T.text}}>¿Dónde lo encontraste?</label>
+              <span style={{background:T.surface2,color:T.muted,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>opcional</span>
+              {(f.link||f.description||f.photo) && <span style={{background:"#DCFCE7",color:"#166534",borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:700}}>{[f.link,f.description,f.photo].filter(Boolean).length} guardado{[f.link,f.description,f.photo].filter(Boolean).length>1?"s":""}</span>}
+            </div>
+            <div style={{display:"flex",background:T.surface2,borderRadius:10,padding:3,marginBottom:8,gap:2}}>
+              {[["link",`🔗 Link${f.link?" ✓":""}`],["desc",`📝 Texto${f.description?" ✓":""}`],["foto",`📷 Foto${f.photo?" ✓":""}`]].map(([id,label])=>(
+                <button key={id} className="btn" onClick={()=>set("activeTab",id)} style={{
+                  flex:1,background:f.activeTab===id?"white":"transparent",
+                  border:"none",borderRadius:8,padding:"7px 4px",fontSize:11,
+                  fontWeight:f.activeTab===id?700:500,
+                  color:f.activeTab===id?T.text:T.muted,
+                  boxShadow:f.activeTab===id?"0 1px 4px rgba(0,0,0,0.08)":"none",
+                }}>{label}</button>
+              ))}
+            </div>
+            {(!f.activeTab||f.activeTab==="link") && <input type="url" value={f.link} onChange={e=>set("link",e.target.value)} placeholder="https://falabella.com/…" style={fs}/>}
+            {f.activeTab==="desc" && <textarea value={f.description} onChange={e=>set("description",e.target.value)} placeholder="Era un sombrero de paja ancho…" rows={2} style={{...fs,resize:"none",lineHeight:1.6}}/>}
+            {f.activeTab==="foto" && (f.photo ? (
               <div style={{position:"relative"}}>
-                <img src={f.photo} alt="ref" style={{width:"100%",maxHeight:180,objectFit:"cover",borderRadius:12,border:"1px solid #EBEBEB"}}/>
+                <img src={f.photo} alt="ref" style={{width:"100%",maxHeight:140,objectFit:"cover",borderRadius:12,border:"1px solid #EBEBEB"}}/>
                 <button className="btn" onClick={()=>set("photo",null)} style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.6)",borderRadius:"50%",width:28,height:28,color:"white"}}><X size={13}/></button>
               </div>
             ) : (
-              <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,border:"1.5px dashed #DCDCDC",borderRadius:12,padding:20,cursor:"pointer",background:T.surface2}}>
-                <span style={{fontSize:28}}>📷</span>
-                <span style={{fontSize:13,color:T.muted,fontWeight:500}}>Subir foto o screenshot</span>
+              <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,border:"1.5px dashed #DCDCDC",borderRadius:12,padding:16,cursor:"pointer",background:T.surface2}}>
+                <span style={{fontSize:24}}>📷</span>
+                <span style={{fontSize:12,color:T.muted}}>Subir foto o screenshot</span>
                 <input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
               </label>
-            )}
+            ))}
           </div>
           <div style={{borderTop:"1px solid #EBEBEB",marginBottom:20}}/>
           <div style={{marginBottom:20}}>
@@ -281,7 +271,7 @@ function ItemModal({ item, onSave, onClose }) {
           </div>
           <div style={{marginBottom:28}}>
             <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>Nota para quien regala</label>
-            <input value={f.notes} onChange={e=>set("notes",e.target.value)} placeholder="Talla, color preferido..." style={fs}/>
+            <input value={f.notes} onChange={e=>set("notes",e.target.value)} placeholder="Talla, color preferido…" style={fs}/>
           </div>
           <button className="btn" onClick={()=>{
             if(!f.name.trim()) return;
@@ -335,22 +325,64 @@ function ListModal({ list, onSave, onClose }) {
 function ShareModal({ list, onClose }) {
   const link = `${window.location.origin}/lista/${list.id}`;
   const [copied,setCopied] = useState(false);
+  const [igCopied,setIgCopied] = useState(null);
+  const ownerName = list.ownerName || "alguien especial";
+  const waText = encodeURIComponent(`¡Hola! Te comparto la lista de regalos de ${ownerName} 🎁: ${link}`);
+
+  const copyIg = (type) => {
+    navigator.clipboard.writeText(link);
+    setIgCopied(type);
+    setTimeout(()=>setIgCopied(null), 2000);
+  };
+
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:500,backdropFilter:"blur(4px)"}}>
-      <div className="pop-in" style={{background:T.surface,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:640,padding:"12px 0 40px",boxShadow:"0 -8px 40px rgba(0,0,0,0.2)"}}>
+      <div className="pop-in" style={{background:T.surface,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:640,maxHeight:"90vh",overflowY:"auto",padding:"12px 0 40px",boxShadow:"0 -8px 40px rgba(0,0,0,0.2)"}}>
         <div style={{display:"flex",justifyContent:"center",padding:"0 0 8px"}}><div style={{width:40,height:4,borderRadius:2,background:"#DCDCDC"}}/></div>
-        <div style={{padding:"0 24px",textAlign:"center"}}>
-          <div style={{fontSize:48,marginBottom:12,animation:"floatY 2.5s ease-in-out infinite"}}>🎉</div>
-          <div style={{fontWeight:800,fontSize:22,color:T.text,marginBottom:6}}>¡Comparte tu lista!</div>
-          <div style={{color:T.muted,fontSize:15,marginBottom:24,lineHeight:1.6}}>Mándale este link a tus amigos y familia</div>
-          <div style={{background:T.surface2,borderRadius:12,padding:"14px 16px",fontSize:13,color:T.muted,wordBreak:"break-all",marginBottom:16,textAlign:"left"}}>{link}</div>
-          <button className="btn" onClick={()=>{navigator.clipboard.writeText(link);setCopied(true);setTimeout(()=>setCopied(false),2400);}} style={{
-            width:"100%",background:copied?"#10B981":T.accent,color:"white",
-            borderRadius:12,padding:"16px",fontSize:15,fontWeight:700,marginBottom:12,transition:"background .3s",
-          }}>
-            {copied?<><Check size={16}/>¡Link copiado!</>:<><Copy size={16}/>Copiar link</>}
-          </button>
-          <button className="btn" onClick={onClose} style={{color:T.muted,fontSize:14,background:"none",textDecoration:"underline"}}>Cerrar</button>
+        <div style={{padding:"0 24px"}}>
+          <div style={{textAlign:"center",marginBottom:20}}>
+            <div style={{fontSize:40,marginBottom:8,animation:"floatY 2.5s ease-in-out infinite"}}>🎉</div>
+            <div style={{fontWeight:800,fontSize:20,color:T.text}}>¡Comparte tu lista!</div>
+            <div style={{color:T.muted,fontSize:14,marginTop:4}}>Mándale este link a tus amigos y familia</div>
+          </div>
+          <div style={{background:T.surface2,borderRadius:12,padding:"12px 14px",fontSize:12,color:T.muted,wordBreak:"break-all",marginBottom:16}}>{link}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+            <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noreferrer" style={{background:"#25D366",color:"white",borderRadius:14,padding:"14px 20px",textDecoration:"none",display:"flex",alignItems:"center",gap:12,fontWeight:700,fontSize:15}}>
+              <span style={{fontSize:22}}>💬</span>
+              <div style={{flex:1}}>
+                <div>WhatsApp</div>
+                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>Abre WhatsApp con el link prellenado</div>
+              </div>
+            </a>
+            <div style={{background:"white",border:"1px solid #E9D5FF",borderRadius:14,overflow:"hidden"}}>
+              <div style={{background:"linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)",padding:"14px 20px",display:"flex",alignItems:"center",gap:12}}>
+                <span style={{fontSize:22}}>📸</span>
+                <div style={{color:"white",fontWeight:700,fontSize:15}}>Instagram</div>
+              </div>
+              <div style={{padding:"10px 14px",display:"flex",gap:8}}>
+                {[["story","📖 Story"],["bio","👤 Bio"],["dm","💬 DM"]].map(([id,label])=>(
+                  <button key={id} onClick={()=>copyIg(id)} style={{flex:1,background:igCopied===id?"#F3E8FF":T.surface2,border:`1px solid ${igCopied===id?"#C084FC":T.border}`,borderRadius:10,padding:"8px 4px",fontSize:11,fontWeight:600,color:igCopied===id?"#7C3AED":T.text,cursor:"pointer"}}>
+                    {igCopied===id?"✅ Copiado":label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <a href={`mailto:?subject=Lista de regalos 🎁&body=¡Hola! Te comparto la lista de ${ownerName}: ${link}`} style={{background:T.accentL,color:T.accent,borderRadius:14,padding:"14px 20px",textDecoration:"none",display:"flex",alignItems:"center",gap:12,fontWeight:700,fontSize:15,border:`1px solid ${T.accent}30`}}>
+              <span style={{fontSize:22}}>✉️</span>
+              <div style={{flex:1}}>
+                <div>Email</div>
+                <div style={{fontSize:11,fontWeight:400,opacity:.8}}>Abre tu app de correo</div>
+              </div>
+            </a>
+            <button className="btn" onClick={()=>{navigator.clipboard.writeText(link);setCopied(true);setTimeout(()=>setCopied(false),2400);}} style={{background:copied?"#10B981":T.text,color:"white",borderRadius:14,padding:"14px 20px",fontSize:15,fontWeight:700,transition:"background .3s",justifyContent:"flex-start",gap:12}}>
+              <span style={{fontSize:22}}>{copied?"✅":"🔗"}</span>
+              <div style={{textAlign:"left"}}>
+                <div>{copied?"¡Link copiado!":"Copiar link"}</div>
+                <div style={{fontSize:11,fontWeight:400,opacity:.8}}>Para pegar donde quieras</div>
+              </div>
+            </button>
+          </div>
+          <button className="btn" onClick={onClose} style={{width:"100%",color:T.muted,fontSize:14,background:"none",textDecoration:"underline"}}>Cerrar</button>
         </div>
       </div>
     </div>
@@ -407,8 +439,59 @@ function OwnerCard({ item, onEdit, onDelete }) {
   );
 }
 
+/* ══ QUESTION BOX ══ */
+function QuestionBox({ item, ownerName }) {
+  const [open,setOpen] = useState(false);
+  const [question,setQuestion] = useState("");
+  const [askerName,setAskerName] = useState("");
+  const [sent,setSent] = useState(false);
+
+  const fsQ = {width:"100%",border:"1.5px solid #EBEBEB",borderRadius:10,padding:"10px 14px",fontSize:13,background:"#FFFFFF",color:"#222222",fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
+
+  const send = async () => {
+    if(!question.trim()) return;
+    await sendEmail("item_question", item.ownerEmail||"", {
+      itemName:item.name, listName:item.listName||"",
+      question:question.trim(), askerName:askerName.trim()||"Alguien",
+    });
+    setSent(true);
+  };
+
+  if(sent) return (
+    <div className="fade-up" style={{marginTop:8,background:"#F0FFF4",border:"1px solid #86efac",borderRadius:12,padding:12,color:"#276749",fontWeight:600,fontSize:13}}>
+      ✅ ¡Pregunta enviada! {ownerName} te responderá 💌
+    </div>
+  );
+
+  if(!open) return (
+    <button className="btn" onClick={()=>setOpen(true)} style={{marginTop:8,background:"white",border:"1.5px dashed #DCDCDC",borderRadius:12,padding:"10px 14px",width:"100%",fontSize:13,color:T.muted,justifyContent:"flex-start",gap:8,fontWeight:500}}>
+      <span style={{fontSize:18}}>💬</span>
+      <span>¿Tienes dudas? <strong style={{color:T.text}}>¡Pregúntale a {ownerName}!</strong></span>
+      <span style={{marginLeft:"auto"}}>→</span>
+    </button>
+  );
+
+  return (
+    <div className="fade-up" style={{marginTop:8,background:"white",border:"1.5px solid #EBEBEB",borderRadius:12,padding:14}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+        <span style={{fontSize:20}}>💬</span>
+        <div>
+          <div style={{fontWeight:700,fontSize:13}}>¡Pregúntale a {ownerName}!</div>
+          <div style={{fontSize:11,color:T.muted}}>Sobre "{item.name}"</div>
+        </div>
+        <button className="btn" onClick={()=>setOpen(false)} style={{marginLeft:"auto",background:"none",color:T.muted}}>✕</button>
+      </div>
+      <input value={askerName} onChange={e=>setAskerName(e.target.value)} placeholder="Tu nombre (opcional)" style={{...fsQ,marginBottom:8}}/>
+      <textarea value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Ej: ¿En qué talla? ¿Prefieres algún color? 🎨" rows={2} style={{...fsQ,resize:"none",lineHeight:1.5,marginBottom:8}}/>
+      <button className="btn" onClick={send} style={{width:"100%",background:T.text,color:"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:700}}>
+        Enviar pregunta 💌
+      </button>
+    </div>
+  );
+}
+
 /* ══ FRIEND CARD ══ */
-function FriendCard({ item, onTake, userName }) {
+function FriendCard({ item, onTake, ownerName="el dueño" }) {
   const [step,setStep] = useState("idle");
   const [name,setName] = useState("");
   const [lb,setLb] = useState(false);
@@ -426,8 +509,8 @@ function FriendCard({ item, onTake, userName }) {
         )}
         <div style={{padding:16}}>
           {item.taken && (
-            <div style={{display:"inline-flex",alignItems:"center",gap:6,background:T.surface2,color:T.muted,borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600,marginBottom:10}}>
-              <Lock size={11}/>No disponible — ya alguien lo eligió
+            <div style={{display:"inline-flex",alignItems:"center",gap:6,background:T.taken,color:T.takenT,borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600,marginBottom:10}}>
+              <Lock size={11}/>Adjudicado
             </div>
           )}
           <div style={{fontWeight:700,fontSize:15,color:item.taken?T.muted:T.text,textDecoration:item.taken?"line-through":"none",marginBottom:4}}>{item.name}</div>
@@ -449,7 +532,7 @@ function FriendCard({ item, onTake, userName }) {
             <div className="fade-up" style={{marginTop:12}}>
               <div style={{fontSize:13,color:T.muted,marginBottom:8}}>¿Cómo te llamas?</div>
               <div style={{display:"flex",gap:8}}>
-                <input value={name} onChange={e=>setName(e.target.value)} placeholder="Tu nombre..." style={{...fs,flex:1,padding:"11px 14px",fontSize:14}}/>
+                <input value={name} onChange={e=>setName(e.target.value)} placeholder="Tu nombre…" style={{...fs,flex:1,padding:"11px 14px",fontSize:14}}/>
                 <button className="btn" onClick={()=>{if(name.trim()){onTake(item.id,name.trim());setStep("done");}}} style={{background:T.accent,color:"white",borderRadius:10,padding:"11px 16px"}}><Check size={16}/></button>
                 <button className="btn" onClick={()=>setStep("idle")} style={{background:T.surface2,borderRadius:10,padding:"11px 14px"}}><X size={16}/></button>
               </div>
@@ -464,6 +547,9 @@ function FriendCard({ item, onTake, userName }) {
                 </a>
               )}
             </div>
+          )}
+          {!item.taken && step !== "name" && (
+            <QuestionBox item={item} ownerName={ownerName}/>
           )}
         </div>
       </div>
@@ -528,7 +614,7 @@ function ListsScreen({ lists, user, onSelect, onNew, onEdit, onDelete, onLogout 
               <PlusCircle size={24} color={T.accent}/>
             </div>
             <div style={{fontWeight:700,fontSize:15,color:T.accent}}>Nueva lista</div>
-            <div style={{fontSize:13,color:T.muted,textAlign:"center",padding:"0 20px"}}>Para cumpleaños, Navidad, Día de la Madre...</div>
+            <div style={{fontSize:13,color:T.muted,textAlign:"center",padding:"0 20px"}}>Para cumpleaños, Navidad, Día de la Madre…</div>
           </div>
         </div>
       </div>
@@ -545,6 +631,8 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
   const [filterP,setFilterP] = useState("todo");
   const [sortBy,setSortBy] = useState("priority");
   const [confetti,setConfetti] = useState(false);
+  const [showSummaryBtn,setShowSummaryBtn] = useState(false);
+  const [summarySent,setSummarySent] = useState(false);
 
   const burst = () => { setConfetti(true); setTimeout(()=>setConfetti(false),1400); };
 
@@ -555,6 +643,14 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
     setItems(updated);
     await onUpdateItems(list.id, updated);
     setModal(null); setEditItem(null); burst();
+    setShowSummaryBtn(true); setSummarySent(false);
+    setTimeout(()=>setShowSummaryBtn(false), 8000);
+  };
+
+  const sendSummary = async () => {
+    if(!user?.email) return;
+    await sendEmail("list_summary", user.email, { listName: list.event, items });
+    setSummarySent(true); setShowSummaryBtn(false);
   };
 
   const deleteItem = async id => {
@@ -568,6 +664,9 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
     setItems(updated);
     await onUpdateItems(list.id, updated);
     burst();
+    if(updated.length > 0 && updated.every(i=>i.taken) && user?.email) {
+      await sendEmail("list_complete", user.email, { listName: list.event });
+    }
   };
 
   const filtered = items
@@ -586,6 +685,18 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
   return (
     <div style={{minHeight:"100vh",background:T.bg}}>
       <Confetti active={confetti}/>
+      {showSummaryBtn && (
+        <div style={{position:"fixed",bottom:100,left:"50%",transform:"translateX(-50%)",zIndex:200,background:"white",border:"1px solid #EBEBEB",borderRadius:16,padding:"12px 20px",boxShadow:"0 8px 30px rgba(0,0,0,0.12)",display:"flex",alignItems:"center",gap:12,maxWidth:400,width:"calc(100% - 48px)"}}>
+          <span style={{fontSize:18}}>📬</span>
+          <span style={{fontSize:13,color:T.text,flex:1}}>¿Quieres un resumen actualizado?</span>
+          <button className="btn" onClick={sendSummary} style={{background:T.accent,color:"white",borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:700}}>Enviar</button>
+        </div>
+      )}
+      {summarySent && (
+        <div style={{position:"fixed",bottom:100,left:"50%",transform:"translateX(-50%)",zIndex:200,background:"#F0FFF4",border:"1px solid #86efac",borderRadius:16,padding:"12px 20px",boxShadow:"0 8px 30px rgba(0,0,0,0.08)",color:"#276749",fontWeight:600,fontSize:13}}>
+          ✅ Resumen enviado a tu email
+        </div>
+      )}
       <nav style={{background:T.surface,borderBottom:"1px solid #EBEBEB",position:"sticky",top:0,zIndex:40}}>
         <div style={{maxWidth:960,margin:"0 auto",padding:"0 24px",display:"flex",alignItems:"center",gap:14,height:72}}>
           <button className="btn" onClick={onBack} style={{background:T.surface2,borderRadius:"50%",width:38,height:38}}><ArrowLeft size={18}/></button>
@@ -648,7 +759,7 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
           {filtered.map((item,i)=>(
             <div key={item.id} style={{animationDelay:`${i*.05}s`}}>
               {isShared
-                ? <FriendCard item={item} onTake={takeItem} userName={user.displayName}/>
+                ? <FriendCard item={item} onTake={takeItem} ownerName={list.ownerName||"el dueño"}/>
                 : <OwnerCard item={item} onEdit={it=>{setEditItem(it);setModal("edit");}} onDelete={deleteItem}/>
               }
             </div>
@@ -724,14 +835,14 @@ function Landing({ onLogin }) {
           <p style={{fontSize:13,color:T.muted,maxWidth:420,lineHeight:1.6}}>
             🐦 Anita se aburrió de recibir lo que no quería. Creó wannit para que tus amigos siempre sepan exactamente qué regalarte.
           </p>
-          <span style={{fontSize:12,color:T.light}}>Hecho con ❤️ en Chile · {new Date().getFullYear()} · <a href="/privacidad" style={{color:T.light,textDecoration:"none"}}>Privacidad</a></span>
+          <span style={{fontSize:12,color:T.light}}>Hecho con ❤️ en Chile · {new Date().getFullYear()}</span>
         </div>
       </div>
     </div>
   );
 }
 
-/* ══ ROOT ══ */
+/* ══ SHARED LIST PAGE ══ */
 function SharedListPage() {
   const { listId } = useParams();
   const [list,setList] = useState(null);
@@ -758,7 +869,7 @@ function SharedListPage() {
 
   if(loading) return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg}}>
-      <div style={{textAlign:"center"}}><Logo size={56}/><div style={{marginTop:16,fontSize:16,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Cargando...</div></div>
+      <div style={{textAlign:"center"}}><Logo size={56}/><div style={{marginTop:16,fontSize:16,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Cargando…</div></div>
     </div>
   );
 
@@ -794,7 +905,7 @@ function SharedListPage() {
             <div style={{width:72,height:72,borderRadius:20,background:"linear-gradient(135deg,#FF385C,#6366F1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:34,animation:"floatY 3s ease-in-out infinite",boxShadow:"0 8px 24px rgba(255,56,92,0.3)"}}>{list.event.split(" ")[0]}</div>
             <div>
               <div style={{fontSize:13,fontWeight:600,color:T.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{list.event}</div>
-              <h1 style={{fontWeight:800,fontSize:28,color:T.text,lineHeight:1.1}}>Lista de regalos 🎁</h1>
+              <h1 style={{fontWeight:800,fontSize:28,color:T.text,lineHeight:1.1}}>Lista de <span style={{color:T.accent}}>{list.ownerName||"alguien"}</span> 🎁</h1>
               {list.date && <div style={{fontSize:14,color:T.muted,marginTop:4}}>{fmtDate(list.date)}</div>}
             </div>
           </div>
@@ -810,7 +921,7 @@ function SharedListPage() {
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:20}}>
           {filtered.map((item,i)=>(
             <div key={item.id} style={{animationDelay:`${i*.05}s`}}>
-              <FriendCard item={item} onTake={takeItem} userName=""/>
+              <FriendCard item={item} onTake={takeItem} ownerName={list.ownerName||"el dueño"}/>
             </div>
           ))}
         </div>
@@ -819,6 +930,7 @@ function SharedListPage() {
   );
 }
 
+/* ══ WANNIT APP ══ */
 function WannitApp() {
   useEffect(()=>{ injectStyles(); },[]);
   const [user,setUser] = useState(null);
@@ -828,7 +940,6 @@ function WannitApp() {
   const [listModal,setListModal] = useState(null);
   const [viewMode,setViewMode] = useState("owner");
 
-  // Auth listener
   useEffect(()=>{
     const unsub = onAuthStateChanged(auth, u => {
       setUser(u);
@@ -837,7 +948,6 @@ function WannitApp() {
     return unsub;
   },[]);
 
-  // Firestore listener
   useEffect(()=>{
     if (!user) return;
     const q = query(collection(db,"lists"), where("uid","==",user.uid));
@@ -860,7 +970,14 @@ function WannitApp() {
 
   const createList = async (data) => {
     await addDoc(collection(db,"lists"), {
-      ...data, uid:user.uid, items:[], createdAt:Date.now()
+      ...data, uid:user.uid, items:[], createdAt:Date.now(),
+      ownerName: user.displayName?.split(" ")[0] || user.displayName || "alguien",
+      ownerEmail: user.email
+    });
+    await sendEmail("list_created", user.email, {
+      listName: data.event,
+      ownerName: user.displayName?.split(" ")[0] || "ahí",
+      eventDate: data.date || null,
     });
     setListModal(null);
   };
@@ -882,14 +999,12 @@ function WannitApp() {
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg}}>
       <div style={{textAlign:"center"}}>
         <Logo size={56}/>
-        <div style={{marginTop:16,fontSize:16,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Cargando...</div>
+        <div style={{marginTop:16,fontSize:16,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Cargando…</div>
       </div>
     </div>
   );
 
-  if (!user) return (
-    <Landing onLogin={handleLogin}/>
-  );
+  if (!user) return <Landing onLogin={handleLogin}/>;
 
   const activeList = lists.find(l=>l.id===activeId);
 
@@ -920,12 +1035,12 @@ function WannitApp() {
   );
 }
 
+/* ══ APP WITH ROUTER ══ */
 function AppWithRouter() {
   useEffect(()=>{ injectStyles(); },[]);
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/privacidad" element={<Privacy/>}/>
         <Route path="/lista/:listId" element={<SharedListPage/>}/>
         <Route path="/*" element={<WannitApp/>}/>
       </Routes>
