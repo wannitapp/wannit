@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { Gift, Pencil, Trash2, Share2, Plus, Lock, ShoppingBag, Copy, X, Check, Star, Settings, PlusCircle, ArrowLeft, Calendar, Link, MessageSquare } from "lucide-react";
 import { auth, provider, db } from "./firebase";
-import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "firebase/auth";
+import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDoc } from "firebase/firestore";
 
 /* ══ STYLES ══ */
@@ -387,15 +387,16 @@ function ShareModal({ list, onClose }) {
               </div>
             </a>
 
-            {/* 2. Instagram / Compartir nativo */}
-            <button className="btn" onClick={async ()=>{
-              const shareData = { title:"Lista de regalos 🎁", text:`¡Mira la lista de regalos de ${ownerName}!`, url:link };
+            {/* 2. Instagram */}
+            <button className="btn" onClick={()=>{
               if(navigator.share) {
-                try { await navigator.share(shareData); } catch(e) {}
+                navigator.share({ title:"Lista de regalos 🎁", text:`¡Mira la lista de ${ownerName}!`, url:link }).catch(()=>{});
               } else {
-                try { await navigator.clipboard.writeText(link); } catch(e) {}
-                setIgCopied("dm");
-                setTimeout(()=>setIgCopied(null),2400);
+                const el = document.createElement("textarea");
+                el.value = link; el.style.position="fixed"; el.style.opacity="0";
+                document.body.appendChild(el); el.focus(); el.select();
+                document.execCommand("copy"); document.body.removeChild(el);
+                setIgCopied("dm"); setTimeout(()=>setIgCopied(null), 2400);
               }
             }} style={{
               background:igCopied==="dm"?"#10B981":"linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)",
@@ -403,10 +404,12 @@ function ShareModal({ list, onClose }) {
               fontSize:14,fontWeight:700,flexDirection:"column",gap:8,border:"none",cursor:"pointer",
               transition:"background .3s",
             }}>
-              <span style={{fontSize:28}}>{igCopied==="dm"?"✅":"📲"}</span>
+              <span style={{fontSize:28}}>{igCopied==="dm"?"✅":"📸"}</span>
               <div style={{textAlign:"center"}}>
-                <div>{igCopied==="dm"?"¡Link copiado!":"Compartir"}</div>
-                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>{igCopied==="dm"?"Pégalo donde quieras":"Instagram, TikTok y más"}</div>
+                <div>{igCopied==="dm"?"¡Copiado!":"Instagram"}</div>
+                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>
+                  {igCopied==="dm"?"Pégalo en tu DM":navigator.share?"Compartir por DM":"Copiar link"}
+                </div>
               </div>
             </button>
 
@@ -463,7 +466,7 @@ function OwnerCard({ item, onEdit, onDelete }) {
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontWeight:700,fontSize:15,color:T.text,marginBottom:4,lineHeight:1.3}}>{item.name}</div>
-              <div style={{fontSize:12,color:T.muted,marginBottom:6}}>{item.category}</div>
+              {item.description && <div style={{fontSize:12,color:T.muted,marginBottom:6,fontStyle:"italic"}}>{item.description}</div>}
               {item.price>0 && <div style={{fontWeight:700,fontSize:15,color:T.text}}>{fmt(item.price)} CLP</div>}
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
@@ -1154,9 +1157,8 @@ function WannitApp() {
   const [listModal,setListModal] = useState(null);
   const [viewMode,setViewMode] = useState("owner");
 
-  // Auth listener + handle redirect result
+  // Auth listener
   useEffect(()=>{
-    getRedirectResult(auth).catch(()=>{});
     const unsub = onAuthStateChanged(auth, u => {
       setUser(u);
       setLoading(false);
@@ -1174,12 +1176,8 @@ function WannitApp() {
     return unsub;
   },[user]);
 
-  const handleLogin = async () => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    try {
-      if(isMobile) { await signInWithRedirect(auth, provider); }
-      else { await signInWithPopup(auth, provider); }
-    } catch(e) { console.error(e); }
+  const handleLogin = () => {
+    signInWithPopup(auth, provider).catch(e => console.error(e));
   };
 
   const handleLogout = async () => {
