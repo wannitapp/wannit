@@ -205,79 +205,77 @@ function ItemModal({ item, onSave, onClose }) {
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:500,backdropFilter:"blur(8px)"}}>
-      <div className="pop-in" style={{background:T.surface,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:640,paddingBottom:24,boxShadow:"0 -12px 60px rgba(0,0,0,0.25)"}}>
-        <div style={{display:"flex",justifyContent:"center",padding:"10px 0 4px"}}>
+      <div className="pop-in" style={{background:T.surface,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:640,paddingBottom:28,boxShadow:"0 -12px 60px rgba(0,0,0,0.25)"}}>
+        <div style={{display:"flex",justifyContent:"center",padding:"10px 0 6px"}}>
           <div style={{width:40,height:4,borderRadius:2,background:"#DCDCDC"}}/>
         </div>
         <div style={{padding:"0 20px"}}>
           {/* Header */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <div style={{fontWeight:800,fontSize:18,color:T.text}}>{item?.id?"Editar deseo":"Nuevo deseo 🎁"}</div>
             <button className="btn" onClick={onClose} style={{background:T.surface2,borderRadius:"50%",width:36,height:36,flexShrink:0}}><X size={16}/></button>
           </div>
 
-          {/* Nombre */}
+          {/* Fila 1: ¿Qué quieres? */}
           <div style={{marginBottom:10}}>
-            <div style={{fontSize:12,fontWeight:700,color:T.text,marginBottom:5}}>
+            <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>
               ¿Qué quieres? <span style={{background:"#FEE2E2",color:"#DC2626",borderRadius:4,padding:"1px 6px",fontSize:9,fontWeight:700,marginLeft:4}}>obligatorio</span>
             </div>
             <input value={f.name} onChange={e=>set("name",e.target.value)}
               placeholder="Ej: Sombrero de paja de Providencia"
-              style={{...fs,padding:"10px 14px",fontSize:14,borderColor:f.name?"#10B981":"#EBEBEB",background:f.name?"#F0FFF4":"white"}}/>
+              style={{...fs,padding:"11px 14px",fontSize:14,borderColor:f.name?"#10B981":"#EBEBEB",background:f.name?"#F0FFF4":"white"}}/>
           </div>
 
-          {/* Link + Descripción en fila */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
-            <div>
-              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>🔗 Link <span style={{fontSize:9}}>opcional</span></div>
+          {/* Fila 2: Link + Descripción + Foto en línea */}
+          <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"stretch"}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>🔗 Link</div>
               <input type="url" value={f.link} onChange={e=>set("link",e.target.value)}
-                placeholder="https://..." style={{...fs,padding:"10px 12px",fontSize:13,borderColor:f.link?"#10B981":"#EBEBEB"}}/>
+                placeholder="https://..." style={{...fs,padding:"10px 12px",fontSize:13,height:44,borderColor:f.link?"#10B981":"#EBEBEB"}}/>
             </div>
-            <div>
-              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>📝 Descripción <span style={{fontSize:9}}>opcional</span></div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>📝 Descripción</div>
               <input value={f.description} onChange={e=>set("description",e.target.value)}
-                placeholder="De ala ancha, color natural..."
-                style={{...fs,padding:"10px 12px",fontSize:13,borderColor:f.description?"#10B981":"#EBEBEB"}}/>
+                placeholder="Color, talla, modelo..."
+                style={{...fs,padding:"10px 12px",fontSize:13,height:44,borderColor:f.description?"#10B981":"#EBEBEB"}}/>
             </div>
-          </div>
-
-          {/* Foto + Prioridad en fila */}
-          <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:8,marginBottom:14,alignItems:"start"}}>
             <div>
-              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>📷 Foto <span style={{fontSize:9}}>opcional</span></div>
+              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>📷 Foto</div>
               {f.photo ? (
-                <div style={{position:"relative",width:72}}>
-                  <img src={f.photo} alt="ref" style={{width:72,height:72,objectFit:"cover",borderRadius:10,border:"2px solid #10B981"}}/>
-                  <button className="btn" onClick={()=>set("photo",null)} style={{position:"absolute",top:-6,right:-6,background:"#EF4444",borderRadius:"50%",width:20,height:20,color:"white",fontSize:10}}>✕</button>
+                <div style={{position:"relative",width:44,height:44}}>
+                  <img src={f.photo} alt="ref" style={{width:44,height:44,objectFit:"cover",borderRadius:10,border:"2px solid #10B981"}}/>
+                  <button className="btn" onClick={()=>set("photo",null)} style={{position:"absolute",top:-5,right:-5,background:"#EF4444",borderRadius:"50%",width:16,height:16,color:"white",fontSize:9,padding:0}}>✕</button>
                 </div>
               ) : (
-                <label style={{display:"flex",alignItems:"center",justifyContent:"center",width:72,height:72,border:"2px dashed #DCDCDC",borderRadius:10,cursor:"pointer",background:T.surface2}}>
-                  <span style={{fontSize:24}}>📷</span>
+                <label style={{display:"flex",alignItems:"center",justifyContent:"center",width:44,height:44,border:"2px dashed #DCDCDC",borderRadius:10,cursor:"pointer",background:T.surface2}}>
+                  <span style={{fontSize:20}}>📷</span>
                   <input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
                 </label>
               )}
             </div>
-            <div>
-              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>¿Cuánto lo quieres? <span style={{fontSize:9}}>opcional</span></div>
-              <div style={{display:"flex",gap:6}}>
-                {priorityConfig.map((p,i)=>(
-                  <button key={i} className="btn" onClick={()=>set("priority",i)} style={{
-                    flex:1,flexDirection:"column",gap:2,
-                    background:f.priority===i?p.bg:T.surface2,
-                    border:`2px solid ${f.priority===i?p.color:"#EBEBEB"}`,
-                    borderRadius:10,padding:"8px 4px",
-                    color:f.priority===i?p.color:T.muted,
-                    transition:"all .2s",
-                  }}>
-                    <span style={{fontSize:16}}>{p.emoji}</span>
-                    <span style={{fontSize:9,lineHeight:1.2,fontWeight:f.priority===i?700:500}}>{p.label}</span>
-                  </button>
-                ))}
-              </div>
+          </div>
+
+          {/* Fila 3: ¿Cuánto lo quieres? */}
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>¿Cuánto lo quieres?</div>
+            <div style={{display:"flex",gap:8}}>
+              {priorityConfig.map((p,i)=>(
+                <button key={i} className="btn" onClick={()=>set("priority",i)} style={{
+                  flex:1,gap:6,
+                  background:f.priority===i?p.bg:T.surface2,
+                  border:`2px solid ${f.priority===i?p.color:"#EBEBEB"}`,
+                  borderRadius:12,padding:"10px 8px",
+                  color:f.priority===i?p.color:T.muted,
+                  transition:"all .2s",
+                }}>
+                  <span style={{fontSize:18}}>{p.emoji}</span>
+                  <span style={{fontSize:11,fontWeight:f.priority===i?700:500,lineHeight:1.2}}>{p.label}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Botón guardar */}
+          {/* Fila 4: Botón */}
           <button className="btn" onClick={()=>{
             if(!f.name.trim()) return;
             onSave({...f, id:f.id||uid(), price:Number(f.price)||0});
@@ -372,20 +370,22 @@ function ShareModal({ list, onClose }) {
               </div>
             </a>
 
-            {/* 2. Instagram DM */}
-            <a href={`https://www.instagram.com/direct/new/`} target="_blank" rel="noreferrer"
-              onClick={()=>{navigator.clipboard.writeText(link);}}
-              style={{
-                background:"linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)",
-                color:"white",borderRadius:14,padding:"16px 12px",
-                textDecoration:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:8,fontWeight:700,fontSize:14
-              }}>
-              <span style={{fontSize:28}}>📸</span>
+            {/* 2. Instagram / Compartir nativo */}
+            <button className="btn" onClick={()=>{
+              const shareData = { title:"Lista de regalos 🎁", text:`¡Mira la lista de regalos de ${ownerName}!`, url:link };
+              if(navigator.share) { navigator.share(shareData); }
+              else { navigator.clipboard.writeText(link); setCopied(true); setTimeout(()=>setCopied(false),2400); }
+            }} style={{
+              background:"linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)",
+              color:"white",borderRadius:14,padding:"16px 12px",
+              fontSize:14,fontWeight:700,flexDirection:"column",gap:8,border:"none",cursor:"pointer",
+            }}>
+              <span style={{fontSize:28}}>📲</span>
               <div style={{textAlign:"center"}}>
-                <div>Instagram DM</div>
-                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>Link copiado — pégalo en el DM</div>
+                <div>Compartir</div>
+                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>Instagram, TikTok y más</div>
               </div>
-            </a>
+            </button>
 
             {/* 3. Email */}
             <a href={`mailto:?subject=Lista de regalos 🎁&body=¡Hola! Te comparto la lista de ${ownerName}: ${link}`} style={{
@@ -780,6 +780,7 @@ function ListsScreen({ lists, user, onSelect, onNew, onEdit, onDelete, onLogout 
 
 /* ══ LIST DETAIL ══ */
 function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }) {
+  const ownerName = list.ownerName || user?.displayName?.split(" ")[0] || "el dueño";
   const [items,setItems] = useState(list.items||[]);
   const [modal,setModal] = useState(null);
   const [editItem,setEditItem] = useState(null);
@@ -916,7 +917,7 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
           {filtered.map((item,i)=>(
             <div key={item.id} style={{animationDelay:`${i*.05}s`}}>
               {isShared
-                ? <FriendCard item={item} onTake={takeItem} ownerName={list.ownerName||""} allItems={items}/>
+                ? <FriendCard item={item} onTake={takeItem} ownerName={ownerName} allItems={items}/>
                 : <OwnerCard item={item} onEdit={it=>{setEditItem(it);setModal("edit");}} onDelete={deleteItem}/>
               }
             </div>
@@ -1106,7 +1107,7 @@ function SharedListPage() {
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:20}}>
           {filtered.map((item,i)=>(
             <div key={item.id} style={{animationDelay:`${i*.05}s`}}>
-              <FriendCard item={item} onTake={takeItem} ownerName={list.ownerName||""} allItems={list.items||[]}/>
+              <FriendCard item={item} onTake={takeItem} ownerName={list.ownerName||"el dueño"} allItems={list.items||[]}/>
             </div>
           ))}
         </div>
