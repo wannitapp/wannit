@@ -347,7 +347,8 @@ function ListModal({ list, onSave, onClose }) {
 
 /* ══ SHARE MODAL ══ */
 function ShareModal({ list, onClose }) {
-  const link = `${window.location.origin}/lista/${list.id}`;
+  const origin = window.location.origin.includes("localhost") ? window.location.origin : "https://wannit.cl";
+  const link = `${origin}/lista/${list.id}`;
   const [copied,setCopied] = useState(false);
   const [igCopied,setIgCopied] = useState(null);
   const ownerName = list.ownerName || "alguien especial";
@@ -387,10 +388,15 @@ function ShareModal({ list, onClose }) {
             </a>
 
             {/* 2. Instagram / Compartir nativo */}
-            <button className="btn" onClick={()=>{
+            <button className="btn" onClick={async ()=>{
               const shareData = { title:"Lista de regalos 🎁", text:`¡Mira la lista de regalos de ${ownerName}!`, url:link };
-              if(navigator.share) { navigator.share(shareData); }
-              else { navigator.clipboard.writeText(link); setIgCopied("dm"); setTimeout(()=>setIgCopied(null),2400); }
+              if(navigator.share) {
+                try { await navigator.share(shareData); } catch(e) {}
+              } else {
+                try { await navigator.clipboard.writeText(link); } catch(e) {}
+                setIgCopied("dm");
+                setTimeout(()=>setIgCopied(null),2400);
+              }
             }} style={{
               background:igCopied==="dm"?"#10B981":"linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)",
               color:"white",borderRadius:14,padding:"16px 12px",
@@ -670,6 +676,10 @@ function FriendCard({ item, onTake, ownerName="", allItems=[] }) {
   const [step,setStep] = useState("idle");
   const [lb,setLb] = useState(false);
   const pr = PRIORITIES[item.priority];
+
+  useEffect(()=>{
+    if(!item.taken) setStep("idle");
+  },[item.taken]);
   return (
     <>
       {lb && <Lightbox src={item.photo} onClose={()=>setLb(false)}/>}
@@ -693,7 +703,7 @@ function FriendCard({ item, onTake, ownerName="", allItems=[] }) {
             </div>
           )}
           <div style={{fontWeight:700,fontSize:15,color:item.taken?T.muted:T.text,textDecoration:item.taken?"line-through":"none",marginBottom:4}}>{item.name}</div>
-          <div style={{fontSize:12,color:T.muted,marginBottom:6}}>{item.category}</div>
+          {item.description && <div style={{fontSize:12,color:T.muted,marginBottom:6,fontStyle:"italic"}}>{item.description}</div>}
           {!item.taken && item.price>0 && <div style={{fontWeight:700,fontSize:15,color:T.text,marginBottom:8}}>{fmt(item.price)} CLP</div>}
           {!item.taken && step==="idle" && (
             <div style={{display:"flex",gap:10,marginTop:4,flexWrap:"wrap"}}>
@@ -1144,8 +1154,9 @@ function WannitApp() {
   const [listModal,setListModal] = useState(null);
   const [viewMode,setViewMode] = useState("owner");
 
-  // Auth listener
+  // Auth listener + handle redirect result
   useEffect(()=>{
+    getRedirectResult(auth).catch(()=>{});
     const unsub = onAuthStateChanged(auth, u => {
       setUser(u);
       setLoading(false);
@@ -1162,11 +1173,6 @@ function WannitApp() {
     });
     return unsub;
   },[user]);
-
-  // Handle redirect result (mobile login)
-  useEffect(()=>{
-    getRedirectResult(auth).catch(()=>{});
-  },[]);
 
   const handleLogin = async () => {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
