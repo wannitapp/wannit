@@ -953,7 +953,7 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
           {filtered.map((item,i)=>(
             <div key={item.id} style={{animationDelay:`${i*.05}s`}}>
               {isShared
-                ? <FriendCard item={item} onTake={takeItem} ownerName={ownerName} allItems={items}/>
+                ? <FriendCard item={{...item, ownerEmail: list.ownerEmail}} onTake={takeItem} ownerName={ownerName} allItems={items}/>
                 : <OwnerCard item={item} onEdit={it=>{setEditItem(it);setModal("edit");}} onDelete={deleteItem}/>
               }
             </div>
@@ -1131,7 +1131,7 @@ function SharedListPage() {
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:20}}>
           {filtered.map((item,i)=>(
             <div key={item.id} style={{animationDelay:`${i*.05}s`}}>
-              <FriendCard item={item} onTake={takeItem} ownerName={list.ownerName||"el dueño"} allItems={list.items||[]}/>
+              <FriendCard item={{...item, ownerEmail: list.ownerEmail}} onTake={takeItem} ownerName={list.ownerName||"el dueño"} allItems={list.items||[]}/>
             </div>
           ))}
         </div>
