@@ -5,23 +5,33 @@ import { auth, provider, db } from "./firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDoc } from "firebase/firestore";
 
-/* ══ EMAIL HELPER ══ */
-const sendEmail = async (type, to, data) => {
-  try {
-    await fetch("/api/send-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, to, data }),
-    });
-  } catch(e) { console.error("Email error:", e); }
-};
-
 /* ══ STYLES ══ */
 const injectStyles = () => {
   if (document.getElementById("ws")) return;
   const s = document.createElement("style");
   s.id = "ws";
-  s.textContent = `@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'); *,*::before,*::after{box-sizing:border-box;margin:0;padding:0} body{font-family:'Plus Jakarta Sans',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#222222} @keyframes popIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}} @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}} @keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}} @keyframes confettiFall{0%{transform:translateY(-16px) rotate(0deg);opacity:1}100%{transform:translateY(100px) rotate(400deg);opacity:0}} .pop-in{animation:popIn .3s ease both} .fade-up{animation:fadeUp .25s ease both} .btn{font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;cursor:pointer;border:none; transition:all .2s ease;display:inline-flex;align-items:center;justify-content:center;gap:7px} .btn:hover{transform:scale(1.02)} .btn:active{transform:scale(.98)} .aircard{background:#fff;border-radius:24px;border:1px solid #EBEBEB;transition:box-shadow .2s,transform .2s;overflow:hidden} .aircard:hover{box-shadow:0 6px 20px rgba(0,0,0,.12);transform:translateY(-2px)} input,textarea{font-family:'Plus Jakarta Sans',sans-serif;font-weight:400} input:focus,textarea:focus{outline:none;border-color:#222!important;box-shadow:none!important} ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-thumb{background:#ddd;border-radius:8px} @media(max-width:600px){.hide-sm{display:none!important}}`;
+  s.textContent = `
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Plus Jakarta Sans',sans-serif;-webkit-font-smoothing:antialiased;background:#FFFFFF;color:#222222}
+    @keyframes popIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes floatY{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+    @keyframes confettiFall{0%{transform:translateY(-16px) rotate(0deg);opacity:1}100%{transform:translateY(100px) rotate(400deg);opacity:0}}
+    .pop-in{animation:popIn .3s ease both}
+    .fade-up{animation:fadeUp .25s ease both}
+    .btn{font-family:'Plus Jakarta Sans',sans-serif;font-weight:600;cursor:pointer;border:none;
+      transition:all .2s ease;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+    .btn:hover{transform:scale(1.02)}
+    .btn:active{transform:scale(.98)}
+    .aircard{background:#fff;border-radius:24px;border:1px solid #EBEBEB;transition:box-shadow .2s,transform .2s;overflow:hidden}
+    .aircard:hover{box-shadow:0 6px 20px rgba(0,0,0,.12);transform:translateY(-2px)}
+    input,textarea{font-family:'Plus Jakarta Sans',sans-serif;font-weight:400}
+    input:focus,textarea:focus{outline:none;border-color:#222!important;box-shadow:none!important}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:#ddd;border-radius:8px}
+    @media(max-width:600px){.hide-sm{display:none!important}}
+  `;
   document.head.appendChild(s);
 };
 
@@ -187,97 +197,123 @@ function ItemModal({ item, onSave, onClose }) {
     reader.readAsDataURL(file);
   };
 
+  const priorityConfig = [
+    { emoji:"🔥", label:"Lo quiero mucho", color:"#FF385C", bg:"#FFF1F2" },
+    { emoji:"✨", label:"Estaría bueno", color:"#F59E0B", bg:"#FFFBEB" },
+    { emoji:"💙", label:"Si se puede", color:"#6366F1", bg:"#EEF2FF" },
+  ];
+
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:500,backdropFilter:"blur(4px)"}}>
-      <div className="pop-in" style={{background:T.surface,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:640,maxHeight:"95vh",overflowY:"auto",padding:"8px 0 40px",boxShadow:"0 -8px 40px rgba(0,0,0,0.2)"}}>
-        <div style={{display:"flex",justifyContent:"center",padding:"12px 0 8px"}}>
-          <div style={{width:40,height:4,borderRadius:2,background:"#DCDCDC"}}/>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:500,backdropFilter:"blur(8px)"}}>
+      <div className="pop-in" style={{background:T.surface,borderRadius:"28px 28px 0 0",width:"100%",maxWidth:640,maxHeight:"95vh",overflowY:"auto",paddingBottom:40,boxShadow:"0 -12px 60px rgba(0,0,0,0.25)"}}>
+        {/* Handle */}
+        <div style={{display:"flex",justifyContent:"center",padding:"14px 0 8px"}}>
+          <div style={{width:44,height:4,borderRadius:2,background:"#DCDCDC"}}/>
         </div>
+
         <div style={{padding:"0 24px"}}>
+          {/* Header */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-            <div style={{fontWeight:800,fontSize:20,color:T.text}}>{item?.id?"Editar deseo":"Nuevo deseo"}</div>
-            <button className="btn" onClick={onClose} style={{background:T.surface2,borderRadius:"50%",width:36,height:36}}><X size={16}/></button>
-          </div>
-          <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:24,padding:16,background:T.surface2,borderRadius:16}}>
-            <EmojiPick value={f.emoji} onChange={v=>set("emoji",v)}/>
             <div>
-              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:8,textTransform:"uppercase",letterSpacing:.8}}>Color</div>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                {ICOLORS.map(c=><Swatch key={c} color={c} selected={f.color===c} onClick={()=>set("color",c)}/>)}
-              </div>
+              <div style={{fontWeight:800,fontSize:22,color:T.text}}>{item?.id?"Editar deseo":"Nuevo deseo"}</div>
+              <div style={{fontSize:13,color:T.muted,marginTop:2}}>Agrega lo que quieres recibir 🎁</div>
             </div>
+            <button className="btn" onClick={onClose} style={{background:T.surface2,borderRadius:"50%",width:40,height:40,flexShrink:0}}><X size={18}/></button>
           </div>
-          <div style={{marginBottom:16}}>
-            <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>¿Qué quieres?</label>
-            <input value={f.name} onChange={e=>set("name",e.target.value)} placeholder="Ej: Sombrero de paja que vi en la calle" style={fs}/>
-          </div>
-          <div style={{marginBottom:20}}>
-            <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>Precio aproximado (CLP)</label>
-            <input type="number" value={f.price} onChange={e=>set("price",e.target.value)} placeholder="50000" style={fs}/>
-          </div>
-          <div style={{borderTop:"1px solid #EBEBEB",marginBottom:20}}/>
-          <div style={{marginBottom:16}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
-              <label style={{fontSize:13,fontWeight:600,color:T.text}}>¿Dónde lo encontraste?</label>
-              <span style={{background:T.surface2,color:T.muted,borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:600}}>opcional</span>
-              {(f.link||f.description||f.photo) && <span style={{background:"#DCFCE7",color:"#166534",borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:700}}>{[f.link,f.description,f.photo].filter(Boolean).length} guardado{[f.link,f.description,f.photo].filter(Boolean).length>1?"s":""}</span>}
+
+          {/* Fila 1: Nombre */}
+          <div style={{marginBottom:18}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <span style={{fontSize:13,fontWeight:700,color:T.text}}>¿Qué quieres?</span>
+              <span style={{background:"#FEE2E2",color:"#DC2626",borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:700}}>obligatorio</span>
             </div>
-            <div style={{display:"flex",background:T.surface2,borderRadius:10,padding:3,marginBottom:8,gap:2}}>
-              {[["link",`🔗 Link${f.link?" ✓":""}`],["desc",`📝 Texto${f.description?" ✓":""}`],["foto",`📷 Foto${f.photo?" ✓":""}`]].map(([id,label])=>(
-                <button key={id} className="btn" onClick={()=>set("activeTab",id)} style={{
-                  flex:1,background:f.activeTab===id?"white":"transparent",
-                  border:"none",borderRadius:8,padding:"7px 4px",fontSize:11,
-                  fontWeight:f.activeTab===id?700:500,
-                  color:f.activeTab===id?T.text:T.muted,
-                  boxShadow:f.activeTab===id?"0 1px 4px rgba(0,0,0,0.08)":"none",
-                }}>{label}</button>
-              ))}
+            <input
+              value={f.name}
+              onChange={e=>set("name",e.target.value)}
+              placeholder="Ej: Sombrero de paja que vi en Providencia"
+              style={{...fs,borderColor:f.name?"#10B981":"#EBEBEB",background:f.name?"#F0FFF4":"white",transition:"all .2s"}}
+            />
+          </div>
+
+          {/* Fila 2: Link */}
+          <div style={{marginBottom:18}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <span style={{fontSize:13,fontWeight:700,color:T.text}}>¿Dónde lo encontraste?</span>
+              <span style={{background:T.surface2,color:T.muted,borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:600}}>opcional</span>
             </div>
-            {(!f.activeTab||f.activeTab==="link") && <input type="url" value={f.link} onChange={e=>set("link",e.target.value)} placeholder="https://falabella.com/…" style={fs}/>}
-            {f.activeTab==="desc" && <textarea value={f.description} onChange={e=>set("description",e.target.value)} placeholder="Era un sombrero de paja ancho…" rows={2} style={{...fs,resize:"none",lineHeight:1.6}}/>}
-            {f.activeTab==="foto" && (f.photo ? (
+            <input type="url" value={f.link} onChange={e=>set("link",e.target.value)}
+              placeholder="https://falabella.com/..." style={{...fs,borderColor:f.link?"#10B981":"#EBEBEB"}}/>
+          </div>
+
+          {/* Fila 3: Descripción */}
+          <div style={{marginBottom:18}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <span style={{fontSize:13,fontWeight:700,color:T.text}}>Descripción</span>
+              <span style={{background:T.surface2,color:T.muted,borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:600}}>opcional</span>
+            </div>
+            <textarea value={f.description} onChange={e=>set("description",e.target.value)}
+              placeholder="Lo vi en la calle, era de ala ancha, color natural..."
+              rows={3} style={{...fs,resize:"none",lineHeight:1.6,borderColor:f.description?"#10B981":"#EBEBEB"}}/>
+          </div>
+
+          {/* Fila 4: Foto */}
+          <div style={{marginBottom:18}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <span style={{fontSize:13,fontWeight:700,color:T.text}}>Foto o screenshot</span>
+              <span style={{background:T.surface2,color:T.muted,borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:600}}>opcional</span>
+            </div>
+            {f.photo ? (
               <div style={{position:"relative"}}>
-                <img src={f.photo} alt="ref" style={{width:"100%",maxHeight:140,objectFit:"cover",borderRadius:12,border:"1px solid #EBEBEB"}}/>
-                <button className="btn" onClick={()=>set("photo",null)} style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.6)",borderRadius:"50%",width:28,height:28,color:"white"}}><X size={13}/></button>
+                <img src={f.photo} alt="ref" style={{width:"100%",maxHeight:160,objectFit:"cover",borderRadius:14,border:"2px solid #10B981"}}/>
+                <button className="btn" onClick={()=>set("photo",null)} style={{position:"absolute",top:8,right:8,background:"rgba(0,0,0,0.65)",borderRadius:"50%",width:30,height:30,color:"white"}}><X size={14}/></button>
               </div>
             ) : (
-              <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,border:"1.5px dashed #DCDCDC",borderRadius:12,padding:16,cursor:"pointer",background:T.surface2}}>
-                <span style={{fontSize:24}}>📷</span>
-                <span style={{fontSize:12,color:T.muted}}>Subir foto o screenshot</span>
+              <label style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10,border:"2px dashed #DCDCDC",borderRadius:14,padding:24,cursor:"pointer",background:"linear-gradient(135deg,#F7F7F7,#FAFAFA)",transition:"all .2s"}}>
+                <span style={{fontSize:36}}>📷</span>
+                <div style={{textAlign:"center"}}>
+                  <div style={{fontSize:14,fontWeight:600,color:T.text}}>Subir foto o screenshot</div>
+                  <div style={{fontSize:12,color:T.muted,marginTop:2}}>JPG, PNG o cualquier imagen</div>
+                </div>
                 <input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
               </label>
-            ))}
+            )}
           </div>
-          <div style={{borderTop:"1px solid #EBEBEB",marginBottom:20}}/>
-          <div style={{marginBottom:20}}>
-            <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:10}}>Categoría</label>
-            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-              {CATEGORIES.map(c=><PillBtn key={c} label={c} active={f.category===c} onClick={()=>set("category",c)}/>)}
-            </div>
-          </div>
+
+          {/* Fila 5: Prioridad */}
           <div style={{marginBottom:28}}>
-            <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:10}}>¿Cuánto lo quieres?</label>
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {PRIORITIES.map((p,i)=>(
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+              <span style={{fontSize:13,fontWeight:700,color:T.text}}>¿Cuánto lo quieres?</span>
+              <span style={{background:T.surface2,color:T.muted,borderRadius:6,padding:"2px 8px",fontSize:10,fontWeight:600}}>opcional</span>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              {priorityConfig.map((p,i)=>(
                 <button key={i} className="btn" onClick={()=>set("priority",i)} style={{
-                  justifyContent:"flex-start", padding:"14px 16px",
-                  background:f.priority===i?T.accentL:T.surface2,
-                  border:`1.5px solid ${f.priority===i?T.accent:"#EBEBEB"}`,
-                  borderRadius:12, fontSize:14, fontWeight:f.priority===i?700:500,
-                  color:f.priority===i?T.accent:T.text,
-                }}>{p.short}</button>
+                  flex:1,flexDirection:"column",gap:4,
+                  background:f.priority===i?p.bg:T.surface2,
+                  border:`2px solid ${f.priority===i?p.color:"#EBEBEB"}`,
+                  borderRadius:14,padding:"12px 8px",
+                  fontWeight:f.priority===i?700:500,
+                  color:f.priority===i?p.color:T.muted,
+                  transition:"all .2s",
+                }}>
+                  <span style={{fontSize:20}}>{p.emoji}</span>
+                  <span style={{fontSize:10,lineHeight:1.3}}>{p.label}</span>
+                </button>
               ))}
             </div>
           </div>
-          <div style={{marginBottom:28}}>
-            <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>Nota para quien regala</label>
-            <input value={f.notes} onChange={e=>set("notes",e.target.value)} placeholder="Talla, color preferido…" style={fs}/>
-          </div>
+
+          {/* Botón guardar */}
           <button className="btn" onClick={()=>{
             if(!f.name.trim()) return;
             onSave({...f, id:f.id||uid(), price:Number(f.price)||0});
-          }} style={{width:"100%",background:T.text,color:"white",borderRadius:12,padding:"16px",fontSize:16,fontWeight:700}}>
-            {item?.id?"Guardar cambios":"Agregar a mi lista 🎁"}
+          }} style={{
+            width:"100%",background:f.name.trim()?T.accent:"#DCDCDC",
+            color:"white",borderRadius:16,padding:"17px",fontSize:16,fontWeight:800,
+            boxShadow:f.name.trim()?"0 6px 20px rgba(255,56,92,0.35)":"none",
+            transition:"all .3s",
+          }}>
+            {item?.id?"Guardar cambios ✓":"Agregar a mi lista 🎁"}
           </button>
         </div>
       </div>
@@ -345,43 +381,64 @@ function ShareModal({ list, onClose }) {
             <div style={{fontWeight:800,fontSize:20,color:T.text}}>¡Comparte tu lista!</div>
             <div style={{color:T.muted,fontSize:14,marginTop:4}}>Mándale este link a tus amigos y familia</div>
           </div>
+
           <div style={{background:T.surface2,borderRadius:12,padding:"12px 14px",fontSize:12,color:T.muted,wordBreak:"break-all",marginBottom:16}}>{link}</div>
-          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
-            <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noreferrer" style={{background:"#25D366",color:"white",borderRadius:14,padding:"14px 20px",textDecoration:"none",display:"flex",alignItems:"center",gap:12,fontWeight:700,fontSize:15}}>
-              <span style={{fontSize:22}}>💬</span>
-              <div style={{flex:1}}>
+
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+
+            {/* 1. WhatsApp */}
+            <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noreferrer" style={{
+              background:"#25D366",color:"white",borderRadius:14,padding:"16px 12px",
+              textDecoration:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:8,fontWeight:700,fontSize:14
+            }}>
+              <span style={{fontSize:28}}>💬</span>
+              <div style={{textAlign:"center"}}>
                 <div>WhatsApp</div>
-                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>Abre WhatsApp con el link prellenado</div>
+                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>Link prellenado</div>
               </div>
             </a>
-            <div style={{background:"white",border:"1px solid #E9D5FF",borderRadius:14,overflow:"hidden"}}>
-              <div style={{background:"linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)",padding:"14px 20px",display:"flex",alignItems:"center",gap:12}}>
-                <span style={{fontSize:22}}>📸</span>
-                <div style={{color:"white",fontWeight:700,fontSize:15}}>Instagram</div>
+
+            {/* 2. Instagram DM */}
+            <button className="btn" onClick={()=>copyIg("dm")} style={{
+              background:igCopied==="dm"?"#F3E8FF":"linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)",
+              color:igCopied==="dm"?"#7C3AED":"white",borderRadius:14,padding:"16px 12px",
+              fontSize:14,fontWeight:700,flexDirection:"column",gap:8,border:"none",
+              transition:"all .3s",
+            }}>
+              <span style={{fontSize:28}}>📸</span>
+              <div style={{textAlign:"center"}}>
+                <div>{igCopied==="dm"?"✅ Copiado":"Instagram DM"}</div>
+                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>Copia y pega en el DM</div>
               </div>
-              <div style={{padding:"10px 14px",display:"flex",gap:8}}>
-                {[["story","📖 Story"],["bio","👤 Bio"],["dm","💬 DM"]].map(([id,label])=>(
-                  <button key={id} onClick={()=>copyIg(id)} style={{flex:1,background:igCopied===id?"#F3E8FF":T.surface2,border:`1px solid ${igCopied===id?"#C084FC":T.border}`,borderRadius:10,padding:"8px 4px",fontSize:11,fontWeight:600,color:igCopied===id?"#7C3AED":T.text,cursor:"pointer"}}>
-                    {igCopied===id?"✅ Copiado":label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <a href={`mailto:?subject=Lista de regalos 🎁&body=¡Hola! Te comparto la lista de ${ownerName}: ${link}`} style={{background:T.accentL,color:T.accent,borderRadius:14,padding:"14px 20px",textDecoration:"none",display:"flex",alignItems:"center",gap:12,fontWeight:700,fontSize:15,border:`1px solid ${T.accent}30`}}>
-              <span style={{fontSize:22}}>✉️</span>
-              <div style={{flex:1}}>
+            </button>
+
+            {/* 3. Email */}
+            <a href={`mailto:?subject=Lista de regalos 🎁&body=¡Hola! Te comparto la lista de ${ownerName}: ${link}`} style={{
+              background:T.accentL,color:T.accent,borderRadius:14,padding:"16px 12px",
+              textDecoration:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:8,
+              fontWeight:700,fontSize:14,border:`1px solid ${T.accent}30`
+            }}>
+              <span style={{fontSize:28}}>✉️</span>
+              <div style={{textAlign:"center"}}>
                 <div>Email</div>
-                <div style={{fontSize:11,fontWeight:400,opacity:.8}}>Abre tu app de correo</div>
+                <div style={{fontSize:11,fontWeight:400,opacity:.8}}>Abre tu correo</div>
               </div>
             </a>
-            <button className="btn" onClick={()=>{navigator.clipboard.writeText(link);setCopied(true);setTimeout(()=>setCopied(false),2400);}} style={{background:copied?"#10B981":T.text,color:"white",borderRadius:14,padding:"14px 20px",fontSize:15,fontWeight:700,transition:"background .3s",justifyContent:"flex-start",gap:12}}>
-              <span style={{fontSize:22}}>{copied?"✅":"🔗"}</span>
-              <div style={{textAlign:"left"}}>
-                <div>{copied?"¡Link copiado!":"Copiar link"}</div>
+
+            {/* 4. Copiar link */}
+            <button className="btn" onClick={()=>{navigator.clipboard.writeText(link);setCopied(true);setTimeout(()=>setCopied(false),2400);}} style={{
+              background:copied?"#10B981":T.text,color:"white",borderRadius:14,
+              padding:"16px 12px",fontSize:14,fontWeight:700,transition:"background .3s",
+              flexDirection:"column",gap:8,border:"none",
+            }}>
+              <span style={{fontSize:28}}>{copied?"✅":"🔗"}</span>
+              <div style={{textAlign:"center"}}>
+                <div>{copied?"¡Copiado!":"Copiar link"}</div>
                 <div style={{fontSize:11,fontWeight:400,opacity:.8}}>Para pegar donde quieras</div>
               </div>
             </button>
           </div>
+
           <button className="btn" onClick={onClose} style={{width:"100%",color:T.muted,fontSize:14,background:"none",textDecoration:"underline"}}>Cerrar</button>
         </div>
       </div>
@@ -439,11 +496,148 @@ function OwnerCard({ item, onEdit, onDelete }) {
   );
 }
 
-/* ══ QUESTION BOX ══ */
+/* ══ LA SALITA — Mejora 9 ══ */
+function GrupoBtn({ item, allItems=[] }) {
+  const [open,setOpen] = useState(false);
+  const [view,setView] = useState(null); // null | "salita"
+  const [salitaCreada,setSalitaCreada] = useState(false);
+  const [salitaLinkCopied,setSalitaLinkCopied] = useState(false);
+  const salitaLink = `${window.location.origin}/salita/${item.id}${Date.now().toString(36)}`;
+  const [gifts,setGifts] = useState([{id:item.id,name:item.name,price:item.price||0,emoji:item.emoji||"🎁"}]);
+  const [participants,setParticipants] = useState([]);
+  const [newNombre,setNewNombre] = useState("");
+  const [newAporte,setNewAporte] = useState("");
+  const totalGifts = gifts.reduce((s,g)=>s+g.price,0);
+  const totalAportes = participants.reduce((s,p)=>s+p.aporte,0);
+  const faltan = Math.max(0,totalGifts-totalAportes);
+  const pct = totalGifts>0?Math.min(100,Math.round(totalAportes/totalGifts*100)):0;
+  const waText = encodeURIComponent(`¡Hola! Estoy organizando un regalo grupal 🎁 ¿Te sumas? Coordinémonos acá: ${salitaLink}`);
+
+  const fsG = {width:"100%",border:"1.5px solid #EBEBEB",borderRadius:10,padding:"9px 12px",fontSize:13,background:"white",color:"#222",fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
+
+  const otrosRegalos = allItems.filter(i=>i.id!==item.id && !gifts.find(g=>g.id===i.id));
+
+  if(!open) return (
+    <button className="btn" onClick={()=>setOpen(true)} style={{
+      marginTop:8,width:"100%",background:"#F5F3FF",color:"#7C3AED",
+      border:"1.5px solid #DDD6FE",borderRadius:12,padding:"11px 14px",
+      fontSize:13,fontWeight:700,justifyContent:"flex-start",gap:10
+    }}>
+      <span style={{fontSize:20}}>🏠</span>
+      <span style={{flex:1,textAlign:"left"}}>La salita</span>
+      <span style={{fontSize:11,fontWeight:400,color:"#A78BFA"}}>Coordínense →</span>
+    </button>
+  );
+
+  return (
+    <div style={{marginTop:8,background:"white",borderRadius:16,border:"1.5px solid #DDD6FE",overflow:"hidden"}}>
+      <div style={{background:"linear-gradient(135deg,#7C3AED,#6366F1)",padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:18}}>🏠</span>
+          <span style={{color:"white",fontWeight:700,fontSize:14}}>La salita</span>
+        </div>
+        <button className="btn" onClick={()=>{setOpen(false);setView(null);}} style={{background:"rgba(255,255,255,0.2)",borderRadius:"50%",width:28,height:28,color:"white"}}><X size={13}/></button>
+      </div>
+
+      <div style={{padding:16}}>
+        <div style={{background:"#F5F3FF",borderRadius:12,padding:14,marginBottom:12,border:"1px dashed #DDD6FE"}}>
+          <div style={{fontSize:13,color:"#7C3AED",fontWeight:600,marginBottom:10}}>🔗 La salita tiene su propio link secreto</div>
+          {!salitaCreada ? (
+            <button className="btn" onClick={()=>setSalitaCreada(true)} style={{width:"100%",background:"#7C3AED",color:"white",border:"none",borderRadius:10,padding:"12px",fontSize:13,fontWeight:700}}>
+              Crear la salita →
+            </button>
+          ) : (
+            <div>
+              <div style={{background:"white",borderRadius:8,padding:"8px 10px",fontSize:11,color:"#9CA3AF",marginBottom:8,wordBreak:"break-all"}}>{salitaLink}</div>
+              <div style={{display:"flex",gap:8}}>
+                <button className="btn" onClick={()=>{setSalitaLinkCopied(true);navigator.clipboard.writeText(salitaLink);setTimeout(()=>setSalitaLinkCopied(false),2000);}} style={{flex:1,background:salitaLinkCopied?"#10B981":"#7C3AED",color:"white",border:"none",borderRadius:8,padding:"9px",fontSize:12,fontWeight:700,transition:"background .3s"}}>
+                  {salitaLinkCopied?"✅ Copiado":"📋 Copiar"}
+                </button>
+                <a href={`https://wa.me/?text=${encodeURIComponent("¡Únete a la salita para el regalo grupal! "+salitaLink)}`} target="_blank" rel="noreferrer" style={{flex:1,background:"#25D366",color:"white",border:"none",borderRadius:8,padding:"9px",fontSize:12,fontWeight:700,textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  💬 Invitar por WA
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {salitaCreada && (
+          <>
+            {/* Regalos en el pool */}
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",marginBottom:6}}>🎁 Regalos en la salita:</div>
+              {gifts.map((g,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#F5F3FF",borderRadius:8,padding:"8px 12px",marginBottom:4,fontSize:13}}>
+                  <span>{g.emoji} {g.name}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{color:"#7C3AED",fontWeight:700}}>${g.price.toLocaleString("es-CL")}</span>
+                    {gifts.length>1 && <button onClick={()=>setGifts(p=>p.filter((_,idx)=>idx!==i))} style={{background:"none",border:"none",color:"#9CA3AF",cursor:"pointer",fontSize:14}}>✕</button>}
+                  </div>
+                </div>
+              ))}
+              {/* Agregar otros regalos de la lista */}
+              {otrosRegalos.length > 0 && (
+                <div style={{marginTop:8}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#9CA3AF",marginBottom:6}}>➕ Agregar otro regalo de la lista:</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    {otrosRegalos.map(r=>(
+                      <button key={r.id} onClick={()=>setGifts(p=>[...p,{id:r.id,name:r.name,price:r.price||0,emoji:r.emoji||"🎁"}])} style={{background:"white",border:"1.5px solid #DDD6FE",borderRadius:20,padding:"5px 12px",fontSize:12,color:"#7C3AED",fontWeight:600,cursor:"pointer"}}>
+                        {r.emoji||"🎁"} {r.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Progress */}
+            <div style={{background:"#F5F3FF",borderRadius:12,padding:12,marginBottom:10}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:4}}>
+                <span style={{color:"#9CA3AF"}}>Meta:</span>
+                <span style={{fontWeight:700,color:"#7C3AED"}}>${totalGifts.toLocaleString("es-CL")}</span>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:6}}>
+                <span style={{color:"#9CA3AF"}}>Llevamos:</span>
+                <span style={{fontWeight:700,color:"#10B981"}}>${totalAportes.toLocaleString("es-CL")}</span>
+              </div>
+              <div style={{background:"#EDE9FE",borderRadius:20,height:8,overflow:"hidden",marginBottom:6}}>
+                <div style={{width:`${pct}%`,height:"100%",background:"#7C3AED",borderRadius:20,transition:"width .4s"}}/>
+              </div>
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
+                <span style={{fontWeight:700}}>Faltan:</span>
+                <span style={{fontWeight:800,color:faltan>0?T.accent:"#10B981"}}>${faltan.toLocaleString("es-CL")}</span>
+              </div>
+              {participants.length>0 && <div style={{fontSize:11,color:"#7C3AED",marginTop:4,fontWeight:600}}>👥 {participants.length} personas · ${participants.length>0?Math.ceil(totalGifts/participants.length).toLocaleString("es-CL"):0} c/u aprox.</div>}
+            </div>
+
+            {/* Participantes */}
+            {participants.map((p,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",background:"white",borderRadius:8,padding:"8px 12px",marginBottom:4,fontSize:13,border:"1px solid #EBEBEB"}}>
+                <span>👤 {p.nombre}</span>
+                <span style={{color:"#7C3AED",fontWeight:700}}>${p.aporte.toLocaleString("es-CL")}</span>
+              </div>
+            ))}
+
+            {/* Agregar participante */}
+            <div style={{display:"flex",gap:6,marginTop:6}}>
+              <input value={newNombre} onChange={e=>setNewNombre(e.target.value)} placeholder="Tu nombre" style={{...fsG,flex:2}}/>
+              <input value={newAporte} onChange={e=>setNewAporte(e.target.value)} type="number" placeholder="$ aporte" style={{...fsG,flex:1}}/>
+              <button onClick={()=>{if(newNombre&&newAporte){setParticipants(p=>[...p,{nombre:newNombre,aporte:Number(newAporte)}]);setNewNombre("");setNewAporte("");}}} style={{background:"#7C3AED",color:"white",border:"none",borderRadius:8,padding:"9px 12px",fontSize:14,fontWeight:700,cursor:"pointer"}}>+</button>
+            </div>
+          </>
+        )}
+
+        <button className="btn" onClick={()=>setOpen(false)} style={{background:"none",border:"none",color:"#9CA3AF",fontSize:12,cursor:"pointer",textDecoration:"underline",marginTop:10,display:"block"}}>← Cerrar</button>
+      </div>
+    </div>
+  );
+}
+
+
+/* ══ QUESTION BOX — Mejora 8 ══ */
 function QuestionBox({ item, ownerName }) {
   const [open,setOpen] = useState(false);
   const [question,setQuestion] = useState("");
-  const [askerName,setAskerName] = useState("");
   const [sent,setSent] = useState(false);
 
   const fsQ = {width:"100%",border:"1.5px solid #EBEBEB",borderRadius:10,padding:"10px 14px",fontSize:13,background:"#FFFFFF",color:"#222222",fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
@@ -452,7 +646,7 @@ function QuestionBox({ item, ownerName }) {
     if(!question.trim()) return;
     await sendEmail("item_question", item.ownerEmail||"", {
       itemName:item.name, listName:item.listName||"",
-      question:question.trim(), askerName:askerName.trim()||"Alguien",
+      question:question.trim(), askerName:"Alguien",
     });
     setSent(true);
   };
@@ -464,7 +658,11 @@ function QuestionBox({ item, ownerName }) {
   );
 
   if(!open) return (
-    <button className="btn" onClick={()=>setOpen(true)} style={{marginTop:8,background:"white",border:"1.5px dashed #DCDCDC",borderRadius:12,padding:"10px 14px",width:"100%",fontSize:13,color:T.muted,justifyContent:"flex-start",gap:8,fontWeight:500}}>
+    <button className="btn" onClick={()=>setOpen(true)} style={{
+      marginTop:8,background:"white",border:"1.5px dashed #DCDCDC",borderRadius:12,
+      padding:"10px 14px",width:"100%",fontSize:13,color:T.muted,
+      justifyContent:"flex-start",gap:8,fontWeight:500
+    }}>
       <span style={{fontSize:18}}>💬</span>
       <span>¿Tienes dudas? <strong style={{color:T.text}}>¡Pregúntale a {ownerName}!</strong></span>
       <span style={{marginLeft:"auto"}}>→</span>
@@ -481,8 +679,9 @@ function QuestionBox({ item, ownerName }) {
         </div>
         <button className="btn" onClick={()=>setOpen(false)} style={{marginLeft:"auto",background:"none",color:T.muted}}>✕</button>
       </div>
-      <input value={askerName} onChange={e=>setAskerName(e.target.value)} placeholder="Tu nombre (opcional)" style={{...fsQ,marginBottom:8}}/>
-      <textarea value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Ej: ¿En qué talla? ¿Prefieres algún color? 🎨" rows={2} style={{...fsQ,resize:"none",lineHeight:1.5,marginBottom:8}}/>
+      <textarea value={question} onChange={e=>setQuestion(e.target.value)}
+        placeholder="Ej: ¿En qué talla? ¿Prefieres algún color? 🎨"
+        rows={2} style={{...fsQ,resize:"none",lineHeight:1.5,marginBottom:8}}/>
       <button className="btn" onClick={send} style={{width:"100%",background:T.text,color:"white",border:"none",borderRadius:10,padding:"11px",fontSize:13,fontWeight:700}}>
         Enviar pregunta 💌
       </button>
@@ -491,9 +690,8 @@ function QuestionBox({ item, ownerName }) {
 }
 
 /* ══ FRIEND CARD ══ */
-function FriendCard({ item, onTake, ownerName="el dueño" }) {
+function FriendCard({ item, onTake, ownerName="el dueño", allItems=[] }) {
   const [step,setStep] = useState("idle");
-  const [name,setName] = useState("");
   const [lb,setLb] = useState(false);
   const pr = PRIORITIES[item.priority];
   return (
@@ -509,8 +707,13 @@ function FriendCard({ item, onTake, ownerName="el dueño" }) {
         )}
         <div style={{padding:16}}>
           {item.taken && (
-            <div style={{display:"inline-flex",alignItems:"center",gap:6,background:T.taken,color:T.takenT,borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600,marginBottom:10}}>
-              <Lock size={11}/>Adjudicado
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+              <div style={{display:"inline-flex",alignItems:"center",gap:6,background:T.taken,color:T.takenT,borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600}}>
+                <Lock size={11}/>Adjudicado
+              </div>
+              <button className="btn" onClick={()=>onTake(item.id,null)} style={{background:"#FFF7ED",color:"#C2410C",border:"1px solid #FED7AA",borderRadius:20,padding:"4px 12px",fontSize:12,fontWeight:600,gap:4}}>
+                ↩ Deshacer
+              </button>
             </div>
           )}
           <div style={{fontWeight:700,fontSize:15,color:item.taken?T.muted:T.text,textDecoration:item.taken?"line-through":"none",marginBottom:4}}>{item.name}</div>
@@ -518,7 +721,7 @@ function FriendCard({ item, onTake, ownerName="el dueño" }) {
           {!item.taken && item.price>0 && <div style={{fontWeight:700,fontSize:15,color:T.text,marginBottom:8}}>{fmt(item.price)} CLP</div>}
           {!item.taken && step==="idle" && (
             <div style={{display:"flex",gap:10,marginTop:4,flexWrap:"wrap"}}>
-              <button className="btn" onClick={()=>setStep("name")} style={{flex:1,background:T.accent,color:"white",borderRadius:10,padding:"12px",fontSize:14,fontWeight:700}}>
+              <button className="btn" onClick={()=>{onTake(item.id,"anónimo");setStep("done");}} style={{flex:1,background:T.accent,color:"white",borderRadius:10,padding:"12px",fontSize:14,fontWeight:700}}>
                 <Gift size={15}/>Quiero regalar esto
               </button>
               {item.link && (
@@ -528,15 +731,8 @@ function FriendCard({ item, onTake, ownerName="el dueño" }) {
               )}
             </div>
           )}
-          {!item.taken && step==="name" && (
-            <div className="fade-up" style={{marginTop:12}}>
-              <div style={{fontSize:13,color:T.muted,marginBottom:8}}>¿Cómo te llamas?</div>
-              <div style={{display:"flex",gap:8}}>
-                <input value={name} onChange={e=>setName(e.target.value)} placeholder="Tu nombre…" style={{...fs,flex:1,padding:"11px 14px",fontSize:14}}/>
-                <button className="btn" onClick={()=>{if(name.trim()){onTake(item.id,name.trim());setStep("done");}}} style={{background:T.accent,color:"white",borderRadius:10,padding:"11px 16px"}}><Check size={16}/></button>
-                <button className="btn" onClick={()=>setStep("idle")} style={{background:T.surface2,borderRadius:10,padding:"11px 14px"}}><X size={16}/></button>
-              </div>
-            </div>
+          {!item.taken && step==="idle" && (
+            <GrupoBtn item={item} allItems={allItems}/>
           )}
           {step==="done" && (
             <div className="fade-up" style={{marginTop:14,background:T.surface2,borderRadius:16,padding:16,border:"1px solid #EBEBEB"}}>
@@ -548,6 +744,7 @@ function FriendCard({ item, onTake, ownerName="el dueño" }) {
               )}
             </div>
           )}
+          {/* Mejora 8 — Pregunta al dueño */}
           {!item.taken && step !== "name" && (
             <QuestionBox item={item} ownerName={ownerName}/>
           )}
@@ -614,7 +811,7 @@ function ListsScreen({ lists, user, onSelect, onNew, onEdit, onDelete, onLogout 
               <PlusCircle size={24} color={T.accent}/>
             </div>
             <div style={{fontWeight:700,fontSize:15,color:T.accent}}>Nueva lista</div>
-            <div style={{fontSize:13,color:T.muted,textAlign:"center",padding:"0 20px"}}>Para cumpleaños, Navidad, Día de la Madre…</div>
+            <div style={{fontSize:13,color:T.muted,textAlign:"center",padding:"0 20px"}}>Para cumpleaños, Navidad, Día de la Madre...</div>
           </div>
         </div>
       </div>
@@ -631,10 +828,11 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
   const [filterP,setFilterP] = useState("todo");
   const [sortBy,setSortBy] = useState("priority");
   const [confetti,setConfetti] = useState(false);
-  const [showSummaryBtn,setShowSummaryBtn] = useState(false);
-  const [summarySent,setSummarySent] = useState(false);
 
   const burst = () => { setConfetti(true); setTimeout(()=>setConfetti(false),1400); };
+
+  const [showSummaryBtn, setShowSummaryBtn] = useState(false);
+  const [summarySent, setSummarySent] = useState(false);
 
   const saveItem = async item => {
     const updated = items.find(i=>i.id===item.id)
@@ -660,12 +858,16 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
   };
 
   const takeItem = async (id,by) => {
-    const updated = items.map(i=>i.id===id?{...i,taken:true,takenBy:by}:i);
+    const updated = by === null
+      ? items.map(i=>i.id===id?{...i,taken:false,takenBy:""}:i)
+      : items.map(i=>i.id===id?{...i,taken:true,takenBy:by}:i);
     setItems(updated);
     await onUpdateItems(list.id, updated);
-    burst();
-    if(updated.length > 0 && updated.every(i=>i.taken) && user?.email) {
-      await sendEmail("list_complete", user.email, { listName: list.event });
+    if(by !== null) {
+      burst();
+      if(updated.length > 0 && updated.every(i=>i.taken) && user?.email) {
+        await sendEmail("list_complete", user.email, { listName: list.event });
+      }
     }
   };
 
@@ -715,11 +917,7 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
               }}>{label}</button>
             ))}
           </div>
-          {!isShared && (
-            <button className="btn" onClick={()=>setShareOpen(true)} style={{background:T.accent,color:"white",borderRadius:30,padding:"10px 20px",fontSize:13,fontWeight:600}}>
-              <Share2 size={14}/>Compartir
-            </button>
-          )}
+
         </div>
       </nav>
       <div style={{background:T.surface,borderBottom:"1px solid #EBEBEB"}}>
@@ -759,7 +957,7 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
           {filtered.map((item,i)=>(
             <div key={item.id} style={{animationDelay:`${i*.05}s`}}>
               {isShared
-                ? <FriendCard item={item} onTake={takeItem} ownerName={list.ownerName||"el dueño"}/>
+                ? <FriendCard item={item} onTake={takeItem} userName={user.displayName} allItems={items}/>
                 : <OwnerCard item={item} onEdit={it=>{setEditItem(it);setModal("edit");}} onDelete={deleteItem}/>
               }
             </div>
@@ -767,11 +965,18 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
         </div>
       </div>
       {!isShared && (
-        <button className="btn" onClick={()=>{setEditItem(null);setModal("add");}} style={{
-          position:"fixed", bottom:28, right:28, background:T.accent, color:"white",
-          borderRadius:30, padding:"14px 24px", fontSize:15, fontWeight:700,
-          boxShadow:"0 6px 20px rgba(255,56,92,0.4)", zIndex:100,
-        }}><Plus size={18}/>Agregar deseo</button>
+        <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,padding:"16px 24px 32px",background:"linear-gradient(transparent,rgba(255,255,255,0.97) 35%)",display:"flex",flexDirection:"column",alignItems:"center",gap:10,pointerEvents:"none"}}>
+          <button className="btn" onClick={()=>setShareOpen(true)} style={{
+            background:T.accent,color:"white",borderRadius:30,padding:"16px 36px",
+            fontSize:16,fontWeight:800,boxShadow:"0 8px 28px rgba(255,56,92,0.45)",
+            pointerEvents:"all",width:"100%",maxWidth:420,
+          }}><Share2 size={18}/>Compartir mi lista</button>
+          <button className="btn" onClick={()=>{setEditItem(null);setModal("add");}} style={{
+            background:T.text,color:"white",borderRadius:30,padding:"13px 28px",
+            fontSize:14,fontWeight:700,boxShadow:"0 4px 16px rgba(0,0,0,0.2)",
+            pointerEvents:"all",
+          }}><Plus size={16}/>Agregar deseo</button>
+        </div>
       )}
       {modal==="add"  && <ItemModal item={null} onSave={saveItem} onClose={()=>setModal(null)}/>}
       {modal==="edit" && <ItemModal item={editItem} onSave={saveItem} onClose={()=>{setModal(null);setEditItem(null);}}/>}
@@ -842,7 +1047,7 @@ function Landing({ onLogin }) {
   );
 }
 
-/* ══ SHARED LIST PAGE ══ */
+/* ══ ROOT ══ */
 function SharedListPage() {
   const { listId } = useParams();
   const [list,setList] = useState(null);
@@ -860,16 +1065,17 @@ function SharedListPage() {
   },[listId]);
 
   const takeItem = async (id,by) => {
-    const updated = list.items.map(i=>i.id===id?{...i,taken:true,takenBy:by}:i);
+    const updated = by === null
+      ? list.items.map(i=>i.id===id?{...i,taken:false,takenBy:""}:i)
+      : list.items.map(i=>i.id===id?{...i,taken:true,takenBy:by}:i);
     await updateDoc(doc(db,"lists",listId),{items:updated});
     setList(prev=>({...prev,items:updated}));
-    setConfetti(true);
-    setTimeout(()=>setConfetti(false),1400);
+    if(by !== null) { setConfetti(true); setTimeout(()=>setConfetti(false),1400); }
   };
 
   if(loading) return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg}}>
-      <div style={{textAlign:"center"}}><Logo size={56}/><div style={{marginTop:16,fontSize:16,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Cargando…</div></div>
+      <div style={{textAlign:"center"}}><Logo size={56}/><div style={{marginTop:16,fontSize:16,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Cargando...</div></div>
     </div>
   );
 
@@ -893,6 +1099,18 @@ function SharedListPage() {
   return (
     <div style={{minHeight:"100vh",background:T.bg}}>
       <Confetti active={confetti}/>
+      {showSummaryBtn && (
+        <div style={{position:"fixed",bottom:100,left:"50%",transform:"translateX(-50%)",zIndex:200,background:"white",border:"1px solid #EBEBEB",borderRadius:16,padding:"12px 20px",boxShadow:"0 8px 30px rgba(0,0,0,0.12)",display:"flex",alignItems:"center",gap:12,maxWidth:400,width:"calc(100% - 48px)"}}>
+          <span style={{fontSize:18}}>📬</span>
+          <span style={{fontSize:13,color:T.text,flex:1}}>¿Quieres un resumen actualizado?</span>
+          <button className="btn" onClick={sendSummary} style={{background:T.accent,color:"white",borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:700}}>Enviar</button>
+        </div>
+      )}
+      {summarySent && (
+        <div style={{position:"fixed",bottom:100,left:"50%",transform:"translateX(-50%)",zIndex:200,background:"#F0FFF4",border:"1px solid #86efac",borderRadius:16,padding:"12px 20px",boxShadow:"0 8px 30px rgba(0,0,0,0.08)",color:"#276749",fontWeight:600,fontSize:13}}>
+          ✅ Resumen enviado a tu email
+        </div>
+      )}
       <nav style={{background:T.surface,borderBottom:"1px solid #EBEBEB",position:"sticky",top:0,zIndex:40}}>
         <div style={{maxWidth:960,margin:"0 auto",padding:"0 24px",display:"flex",alignItems:"center",gap:8,height:72}}>
           <Logo size={30}/>
@@ -904,8 +1122,8 @@ function SharedListPage() {
           <div style={{display:"flex",alignItems:"center",gap:20}}>
             <div style={{width:72,height:72,borderRadius:20,background:"linear-gradient(135deg,#FF385C,#6366F1)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:34,animation:"floatY 3s ease-in-out infinite",boxShadow:"0 8px 24px rgba(255,56,92,0.3)"}}>{list.event.split(" ")[0]}</div>
             <div>
-              <div style={{fontSize:13,fontWeight:600,color:T.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{list.event}</div>
-              <h1 style={{fontWeight:800,fontSize:28,color:T.text,lineHeight:1.1}}>Lista de <span style={{color:T.accent}}>{list.ownerName||"alguien"}</span> 🎁</h1>
+              <div style={{fontSize:12,fontWeight:700,color:T.muted,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{list.event}</div>
+              <h1 style={{fontWeight:800,fontSize:26,color:T.text,lineHeight:1.1,marginBottom:4}}>Lista de <span style={{color:T.accent}}>{list.ownerName||"alguien"}</span> 🎁</h1>
               {list.date && <div style={{fontSize:14,color:T.muted,marginTop:4}}>{fmtDate(list.date)}</div>}
             </div>
           </div>
@@ -921,7 +1139,7 @@ function SharedListPage() {
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:20}}>
           {filtered.map((item,i)=>(
             <div key={item.id} style={{animationDelay:`${i*.05}s`}}>
-              <FriendCard item={item} onTake={takeItem} ownerName={list.ownerName||"el dueño"}/>
+              <FriendCard item={item} onTake={takeItem} userName="" allItems={list.items||[]}/>
             </div>
           ))}
         </div>
@@ -930,7 +1148,6 @@ function SharedListPage() {
   );
 }
 
-/* ══ WANNIT APP ══ */
 function WannitApp() {
   useEffect(()=>{ injectStyles(); },[]);
   const [user,setUser] = useState(null);
@@ -940,6 +1157,7 @@ function WannitApp() {
   const [listModal,setListModal] = useState(null);
   const [viewMode,setViewMode] = useState("owner");
 
+  // Auth listener
   useEffect(()=>{
     const unsub = onAuthStateChanged(auth, u => {
       setUser(u);
@@ -948,6 +1166,7 @@ function WannitApp() {
     return unsub;
   },[]);
 
+  // Firestore listener
   useEffect(()=>{
     if (!user) return;
     const q = query(collection(db,"lists"), where("uid","==",user.uid));
@@ -969,11 +1188,12 @@ function WannitApp() {
   };
 
   const createList = async (data) => {
-    await addDoc(collection(db,"lists"), {
+    const docRef = await addDoc(collection(db,"lists"), {
       ...data, uid:user.uid, items:[], createdAt:Date.now(),
       ownerName: user.displayName?.split(" ")[0] || user.displayName || "alguien",
       ownerEmail: user.email
     });
+    // Mejora 1 — correo automático al crear lista
     await sendEmail("list_created", user.email, {
       listName: data.event,
       ownerName: user.displayName?.split(" ")[0] || "ahí",
@@ -999,12 +1219,14 @@ function WannitApp() {
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:T.bg}}>
       <div style={{textAlign:"center"}}>
         <Logo size={56}/>
-        <div style={{marginTop:16,fontSize:16,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Cargando…</div>
+        <div style={{marginTop:16,fontSize:16,color:T.muted,fontFamily:"'Plus Jakarta Sans',sans-serif"}}>Cargando...</div>
       </div>
     </div>
   );
 
-  if (!user) return <Landing onLogin={handleLogin}/>;
+  if (!user) return (
+    <Landing onLogin={handleLogin}/>
+  );
 
   const activeList = lists.find(l=>l.id===activeId);
 
@@ -1035,7 +1257,6 @@ function WannitApp() {
   );
 }
 
-/* ══ APP WITH ROUTER ══ */
 function AppWithRouter() {
   useEffect(()=>{ injectStyles(); },[]);
   return (
@@ -1050,3 +1271,14 @@ function AppWithRouter() {
 
 export { AppWithRouter };
 export default AppWithRouter;
+
+/* ══ EMAIL HELPER ══ */
+const sendEmail = async (type, to, data) => {
+  try {
+    await fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, to, data }),
+    });
+  } catch(e) { console.error("Email error:", e); }
+};
