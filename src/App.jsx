@@ -390,16 +390,17 @@ function ShareModal({ list, onClose }) {
             <button className="btn" onClick={()=>{
               const shareData = { title:"Lista de regalos 🎁", text:`¡Mira la lista de regalos de ${ownerName}!`, url:link };
               if(navigator.share) { navigator.share(shareData); }
-              else { navigator.clipboard.writeText(link); setCopied(true); setTimeout(()=>setCopied(false),2400); }
+              else { navigator.clipboard.writeText(link); setIgCopied("dm"); setTimeout(()=>setIgCopied(null),2400); }
             }} style={{
-              background:"linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)",
+              background:igCopied==="dm"?"#10B981":"linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)",
               color:"white",borderRadius:14,padding:"16px 12px",
               fontSize:14,fontWeight:700,flexDirection:"column",gap:8,border:"none",cursor:"pointer",
+              transition:"background .3s",
             }}>
-              <span style={{fontSize:28}}>📲</span>
+              <span style={{fontSize:28}}>{igCopied==="dm"?"✅":"📲"}</span>
               <div style={{textAlign:"center"}}>
-                <div>Compartir</div>
-                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>Instagram, TikTok y más</div>
+                <div>{igCopied==="dm"?"¡Link copiado!":"Compartir"}</div>
+                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>{igCopied==="dm"?"Pégalo donde quieras":"Instagram, TikTok y más"}</div>
               </div>
             </button>
 
@@ -864,14 +865,14 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
     <div style={{minHeight:"100vh",background:T.bg}}>
       <Confetti active={confetti}/>
       {showSummaryBtn && (
-        <div style={{position:"fixed",bottom:100,left:"50%",transform:"translateX(-50%)",zIndex:200,background:"white",border:"1px solid #EBEBEB",borderRadius:16,padding:"12px 20px",boxShadow:"0 8px 30px rgba(0,0,0,0.12)",display:"flex",alignItems:"center",gap:12,maxWidth:400,width:"calc(100% - 48px)"}}>
+        <div style={{position:"fixed",bottom:160,left:"50%",transform:"translateX(-50%)",zIndex:200,background:"white",border:"1px solid #EBEBEB",borderRadius:16,padding:"12px 20px",boxShadow:"0 8px 30px rgba(0,0,0,0.12)",display:"flex",alignItems:"center",gap:12,maxWidth:400,width:"calc(100% - 48px)"}}>
           <span style={{fontSize:18}}>📬</span>
           <span style={{fontSize:13,color:T.text,flex:1}}>¿Quieres un resumen actualizado?</span>
           <button className="btn" onClick={sendSummary} style={{background:T.accent,color:"white",borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:700}}>Enviar</button>
         </div>
       )}
       {summarySent && (
-        <div style={{position:"fixed",bottom:100,left:"50%",transform:"translateX(-50%)",zIndex:200,background:"#F0FFF4",border:"1px solid #86efac",borderRadius:16,padding:"12px 20px",boxShadow:"0 8px 30px rgba(0,0,0,0.08)",color:"#276749",fontWeight:600,fontSize:13}}>
+        <div style={{position:"fixed",bottom:160,left:"50%",transform:"translateX(-50%)",zIndex:200,background:"#F0FFF4",border:"1px solid #86efac",borderRadius:16,padding:"12px 20px",boxShadow:"0 8px 30px rgba(0,0,0,0.08)",color:"#276749",fontWeight:600,fontSize:13}}>
           ✅ Resumen enviado a tu email
         </div>
       )}
@@ -901,7 +902,9 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
           <div style={{display:"flex",alignItems:"center",gap:16}}>
             <div style={{fontSize:32}}>{list.event.split(" ")[0]}</div>
             <div>
-              <h2 style={{fontWeight:700,fontSize:20,color:T.text}}>{list.event}</h2>
+              <h2 style={{fontWeight:800,fontSize:20,color:T.text}}>
+                Lista de <span style={{color:T.accent}}>{list.event.replace(/^[\p{Emoji}\s]+/u,"").trim().toLowerCase()}</span> de <span style={{color:T.accent}}>{ownerName}</span>
+              </h2>
               {list.date && <div style={{fontSize:13,color:T.muted,display:"flex",alignItems:"center",gap:5,marginTop:2}}><Calendar size={12}/>{fmtDate(list.date)}</div>}
             </div>
           </div>
