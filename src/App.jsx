@@ -205,7 +205,7 @@ function ItemModal({ item, onSave, onClose }) {
 
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:500,backdropFilter:"blur(8px)"}}>
-      <div className="pop-in" style={{background:T.surface,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:640,paddingBottom:28,boxShadow:"0 -12px 60px rgba(0,0,0,0.25)"}}>
+      <div className="pop-in" style={{background:T.surface,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:640,paddingBottom:28,boxShadow:"0 -12px 60px rgba(0,0,0,0.25)",maxHeight:"90vh",overflowY:"auto"}}>
         <div style={{display:"flex",justifyContent:"center",padding:"10px 0 6px"}}>
           <div style={{width:40,height:4,borderRadius:2,background:"#DCDCDC"}}/>
         </div>
@@ -375,62 +375,67 @@ function ShareModal({ list, onClose }) {
 
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
 
-            {/* 1. WhatsApp */}
-            <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noreferrer" style={{
-              background:"#25D366",color:"white",borderRadius:14,padding:"16px 12px",
-              textDecoration:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:8,fontWeight:700,fontSize:14
-            }}>
-              <span style={{fontSize:28}}>💬</span>
-              <div style={{textAlign:"center"}}>
-                <div>WhatsApp</div>
-                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>Link prellenado</div>
-              </div>
-            </a>
+            {/* Móvil: compartir nativo + copiar link */}
+            {/* Desktop: WhatsApp + Email + Copiar link */}
 
-            {/* 2. Instagram */}
-            <button className="btn" onClick={()=>{
-              if(navigator.share) {
-                navigator.share({ title:"Lista de regalos 🎁", text:`¡Mira la lista de ${ownerName}!`, url:link }).catch(()=>{});
-              } else {
-                const el = document.createElement("textarea");
-                el.value = link; el.style.position="fixed"; el.style.opacity="0";
-                document.body.appendChild(el); el.focus(); el.select();
-                document.execCommand("copy"); document.body.removeChild(el);
-                setIgCopied("dm"); setTimeout(()=>setIgCopied(null), 2400);
-              }
-            }} style={{
-              background:igCopied==="dm"?"#10B981":"linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045)",
-              color:"white",borderRadius:14,padding:"16px 12px",
-              fontSize:14,fontWeight:700,flexDirection:"column",gap:8,border:"none",cursor:"pointer",
-              transition:"background .3s",
-            }}>
-              <span style={{fontSize:28}}>{igCopied==="dm"?"✅":"📸"}</span>
-              <div style={{textAlign:"center"}}>
-                <div>{igCopied==="dm"?"¡Copiado!":"Instagram"}</div>
-                <div style={{fontSize:11,fontWeight:400,opacity:.85}}>
-                  {igCopied==="dm"?"Pégalo en tu DM":navigator.share?"Compartir por DM":"Copiar link"}
+            {/* 1. WhatsApp — solo desktop */}
+            {!navigator.share && (
+              <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noreferrer" style={{
+                background:"#25D366",color:"white",borderRadius:14,padding:"16px 12px",
+                textDecoration:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:8,fontWeight:700,fontSize:14
+              }}>
+                <span style={{fontSize:28}}>💬</span>
+                <div style={{textAlign:"center"}}>
+                  <div>WhatsApp</div>
+                  <div style={{fontSize:11,fontWeight:400,opacity:.85}}>Link prellenado</div>
                 </div>
-              </div>
-            </button>
+              </a>
+            )}
 
-            {/* 3. Email */}
-            <a href={`mailto:?subject=Lista de regalos 🎁&body=¡Hola! Te comparto la lista de ${ownerName}: ${link}`} style={{
-              background:T.accentL,color:T.accent,borderRadius:14,padding:"16px 12px",
-              textDecoration:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:8,
-              fontWeight:700,fontSize:14,border:`1px solid ${T.accent}30`
-            }}>
-              <span style={{fontSize:28}}>✉️</span>
-              <div style={{textAlign:"center"}}>
-                <div>Email</div>
-                <div style={{fontSize:11,fontWeight:400,opacity:.8}}>Abre tu correo</div>
-              </div>
-            </a>
+            {/* 2. Compartir nativo — solo móvil */}
+            {navigator.share && (
+              <button className="btn" onClick={()=>{
+                navigator.share({ title:"Lista de regalos 🎁", text:`¡Mira la lista de ${ownerName}!`, url:link }).catch(()=>{});
+              }} style={{
+                background:"linear-gradient(135deg,#FF385C,#6366F1)",
+                color:"white",borderRadius:14,padding:"16px 12px",
+                fontSize:14,fontWeight:700,flexDirection:"column",gap:8,border:"none",cursor:"pointer",
+              }}>
+                <span style={{fontSize:28}}>📲</span>
+                <div style={{textAlign:"center"}}>
+                  <div>Compartir</div>
+                  <div style={{fontSize:11,fontWeight:400,opacity:.85}}>WhatsApp, Instagram y más</div>
+                </div>
+              </button>
+            )}
 
-            {/* 4. Copiar link */}
-            <button className="btn" onClick={()=>{navigator.clipboard.writeText(link);setCopied(true);setTimeout(()=>setCopied(false),2400);}} style={{
+            {/* 3. Email — solo desktop */}
+            {!navigator.share && (
+              <a href={`mailto:?subject=Lista de regalos 🎁&body=¡Hola! Te comparto la lista de ${ownerName}: ${link}`} style={{
+                background:T.accentL,color:T.accent,borderRadius:14,padding:"16px 12px",
+                textDecoration:"none",display:"flex",flexDirection:"column",alignItems:"center",gap:8,
+                fontWeight:700,fontSize:14,border:`1px solid ${T.accent}30`
+              }}>
+                <span style={{fontSize:28}}>✉️</span>
+                <div style={{textAlign:"center"}}>
+                  <div>Email</div>
+                  <div style={{fontSize:11,fontWeight:400,opacity:.8}}>Abre tu correo</div>
+                </div>
+              </a>
+            )}
+
+            {/* 4. Copiar link — siempre */}
+            <button className="btn" onClick={()=>{
+              const el = document.createElement("textarea");
+              el.value = link; el.style.position="fixed"; el.style.opacity="0";
+              document.body.appendChild(el); el.focus(); el.select();
+              document.execCommand("copy"); document.body.removeChild(el);
+              setCopied(true); setTimeout(()=>setCopied(false),2400);
+            }} style={{
               background:copied?"#10B981":T.text,color:"white",borderRadius:14,
               padding:"16px 12px",fontSize:14,fontWeight:700,transition:"background .3s",
               flexDirection:"column",gap:8,border:"none",
+              gridColumn: !navigator.share ? "auto" : "auto",
             }}>
               <span style={{fontSize:28}}>{copied?"✅":"🔗"}</span>
               <div style={{textAlign:"center"}}>
@@ -484,8 +489,6 @@ function OwnerCard({ item, onEdit, onDelete }) {
               </span>
             )}
           </div>
-          {item.description && <div style={{marginTop:10,fontSize:13,color:T.sub,lineHeight:1.55,borderTop:"1px solid #EBEBEB",paddingTop:10,fontStyle:"italic"}}>"{item.description}"</div>}
-          {item.notes && <div style={{marginTop:8,fontSize:12,color:T.muted,background:T.surface2,borderRadius:8,padding:"6px 10px"}}>💬 {item.notes}</div>}
           {item.link && (
             <a href={item.link} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:5,marginTop:8,fontSize:13,color:T.accent,fontWeight:600,textDecoration:"none"}}>
               <ShoppingBag size={12}/>Ver en tienda
@@ -758,7 +761,7 @@ function ListsScreen({ lists, user, onSelect, onNew, onEdit, onDelete, onLogout 
               {user.photoURL && <img src={user.photoURL} alt="" style={{width:30,height:30,borderRadius:"50%"}}/>}
               <span style={{fontSize:13,fontWeight:600,color:T.text}}>{user.displayName?.split(" ")[0]}</span>
             </div>
-            <button className="btn" onClick={onLogout} style={{background:"none",color:T.muted,fontSize:13,fontWeight:500}}>Salir</button>
+            <button className="btn" onClick={onLogout} style={{background:T.surface2,color:T.text,fontSize:13,fontWeight:600,borderRadius:20,padding:"8px 16px",border:"1px solid #DCDCDC"}}>Salir</button>
           </div>
         </div>
       </nav>
@@ -839,6 +842,7 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
     if(!user?.email) return;
     await sendEmail("list_summary", user.email, { listName: list.event, items });
     setSummarySent(true); setShowSummaryBtn(false);
+    setTimeout(()=>setSummarySent(false), 3000);
   };
 
   const deleteItem = async id => {
@@ -1091,18 +1095,6 @@ function SharedListPage() {
   return (
     <div style={{minHeight:"100vh",background:T.bg}}>
       <Confetti active={confetti}/>
-      {showSummaryBtn && (
-        <div style={{position:"fixed",bottom:100,left:"50%",transform:"translateX(-50%)",zIndex:200,background:"white",border:"1px solid #EBEBEB",borderRadius:16,padding:"12px 20px",boxShadow:"0 8px 30px rgba(0,0,0,0.12)",display:"flex",alignItems:"center",gap:12,maxWidth:400,width:"calc(100% - 48px)"}}>
-          <span style={{fontSize:18}}>📬</span>
-          <span style={{fontSize:13,color:T.text,flex:1}}>¿Quieres un resumen actualizado?</span>
-          <button className="btn" onClick={sendSummary} style={{background:T.accent,color:"white",borderRadius:8,padding:"8px 12px",fontSize:12,fontWeight:700}}>Enviar</button>
-        </div>
-      )}
-      {summarySent && (
-        <div style={{position:"fixed",bottom:100,left:"50%",transform:"translateX(-50%)",zIndex:200,background:"#F0FFF4",border:"1px solid #86efac",borderRadius:16,padding:"12px 20px",boxShadow:"0 8px 30px rgba(0,0,0,0.08)",color:"#276749",fontWeight:600,fontSize:13}}>
-          ✅ Resumen enviado a tu email
-        </div>
-      )}
       <nav style={{background:T.surface,borderBottom:"1px solid #EBEBEB",position:"sticky",top:0,zIndex:40}}>
         <div style={{maxWidth:960,margin:"0 auto",padding:"0 24px",display:"flex",alignItems:"center",gap:8,height:72}}>
           <Logo size={30}/>
