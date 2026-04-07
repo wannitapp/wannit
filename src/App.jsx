@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { Gift, Pencil, Trash2, Share2, Plus, Lock, ShoppingBag, Copy, X, Check, Star, Settings, PlusCircle, ArrowLeft, Calendar, Link, MessageSquare } from "lucide-react";
 import { auth, provider, db } from "./firebase";
-import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import { signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDoc } from "firebase/firestore";
 
 /* ══ STYLES ══ */
@@ -226,28 +226,28 @@ function ItemModal({ item, onSave, onClose }) {
               style={{...fs,padding:"11px 14px",fontSize:14,borderColor:f.name?"#10B981":"#EBEBEB",background:f.name?"#F0FFF4":"white"}}/>
           </div>
 
-          {/* Fila 2: Link + Descripción + Foto en línea */}
-          <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"stretch"}}>
-            <div style={{flex:1}}>
-              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>🔗 Link</div>
+          {/* Fila 2: Link + Descripción + Foto en línea — iguales */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>🔗 Link <span style={{fontSize:9,fontWeight:400}}>opcional</span></div>
               <input type="url" value={f.link} onChange={e=>set("link",e.target.value)}
-                placeholder="https://..." style={{...fs,padding:"10px 12px",fontSize:13,height:44,borderColor:f.link?"#10B981":"#EBEBEB"}}/>
-            </div>
-            <div style={{flex:1}}>
-              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>📝 Descripción</div>
-              <input value={f.description} onChange={e=>set("description",e.target.value)}
-                placeholder="Color, talla, modelo..."
-                style={{...fs,padding:"10px 12px",fontSize:13,height:44,borderColor:f.description?"#10B981":"#EBEBEB"}}/>
+                placeholder="https://..." style={{...fs,padding:"10px 12px",fontSize:13,borderColor:f.link?"#10B981":"#EBEBEB"}}/>
             </div>
             <div>
-              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>📷 Foto</div>
+              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>📝 Descripción <span style={{fontSize:9,fontWeight:400}}>opcional</span></div>
+              <input value={f.description} onChange={e=>set("description",e.target.value)}
+                placeholder="Color, talla, modelo..."
+                style={{...fs,padding:"10px 12px",fontSize:13,borderColor:f.description?"#10B981":"#EBEBEB"}}/>
+            </div>
+            <div>
+              <div style={{fontSize:12,fontWeight:600,color:T.muted,marginBottom:5}}>📷 Foto <span style={{fontSize:9,fontWeight:400}}>opcional</span></div>
               {f.photo ? (
-                <div style={{position:"relative",width:44,height:44}}>
-                  <img src={f.photo} alt="ref" style={{width:44,height:44,objectFit:"cover",borderRadius:10,border:"2px solid #10B981"}}/>
+                <div style={{position:"relative"}}>
+                  <img src={f.photo} alt="ref" style={{width:"100%",height:44,objectFit:"cover",borderRadius:10,border:"2px solid #10B981"}}/>
                   <button className="btn" onClick={()=>set("photo",null)} style={{position:"absolute",top:-5,right:-5,background:"#EF4444",borderRadius:"50%",width:16,height:16,color:"white",fontSize:9,padding:0}}>✕</button>
                 </div>
               ) : (
-                <label style={{display:"flex",alignItems:"center",justifyContent:"center",width:44,height:44,border:"2px dashed #DCDCDC",borderRadius:10,cursor:"pointer",background:T.surface2}}>
+                <label style={{display:"flex",alignItems:"center",justifyContent:"center",height:44,border:"2px dashed #DCDCDC",borderRadius:10,cursor:"pointer",background:T.surface2}}>
                   <span style={{fontSize:20}}>📷</span>
                   <input type="file" accept="image/*" onChange={handlePhoto} style={{display:"none"}}/>
                 </label>
@@ -295,8 +295,11 @@ function ItemModal({ item, onSave, onClose }) {
 
 /* ══ LIST MODAL ══ */
 function ListModal({ list, onSave, onClose }) {
-  const [f,setF] = useState(list||{event:EVENTS[0],date:"",message:""});
+  const [f,setF] = useState(list||{event:EVENTS[0],date:"",message:"",customEvent:""});
   const set = (k,v) => setF(p=>({...p,[k]:v}));
+  const isOtro = f.event === "🎉 Otro";
+  const eventLabel = isOtro && f.customEvent.trim() ? `🎉 ${f.customEvent.trim()}` : f.event;
+
   return (
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:500,backdropFilter:"blur(4px)"}}>
       <div className="pop-in" style={{background:T.surface,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:640,padding:"12px 0 40px",boxShadow:"0 -8px 40px rgba(0,0,0,0.2)"}}>
@@ -311,16 +314,29 @@ function ListModal({ list, onSave, onClose }) {
             <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
               {EVENTS.map(e=><PillBtn key={e} label={e} active={f.event===e} onClick={()=>set("event",e)}/>)}
             </div>
+            {isOtro && (
+              <input
+                value={f.customEvent||""}
+                onChange={e=>set("customEvent",e.target.value)}
+                placeholder="Ej: Baby shower, despedida de soltera..."
+                style={{...fs,marginTop:10,borderColor:f.customEvent?"#10B981":"#EBEBEB"}}
+                autoFocus
+              />
+            )}
           </div>
           <div style={{marginBottom:16}}>
-            <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>Fecha del evento</label>
+            <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>
+              Fecha del evento <span style={{fontSize:11,fontWeight:400,color:T.muted}}>opcional</span>
+            </label>
             <input type="date" value={f.date||""} onChange={e=>set("date",e.target.value)} style={fs}/>
           </div>
           <div style={{marginBottom:28}}>
-            <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>Mensaje para tus amigos</label>
+            <label style={{display:"block",fontSize:13,fontWeight:600,color:T.text,marginBottom:8}}>
+              Mensaje para tus amigos <span style={{fontSize:11,fontWeight:400,color:T.muted}}>opcional</span>
+            </label>
             <input value={f.message||""} onChange={e=>set("message",e.target.value)} placeholder="¡Este año quiero celebrar a lo grande! 🎉" style={fs}/>
           </div>
-          <button className="btn" onClick={()=>onSave(f)} style={{width:"100%",background:T.text,color:"white",borderRadius:12,padding:"16px",fontSize:16,fontWeight:700}}>
+          <button className="btn" onClick={()=>onSave({...f, event:eventLabel})} style={{width:"100%",background:T.text,color:"white",borderRadius:12,padding:"16px",fontSize:16,fontWeight:700}}>
             {list?.id?"Guardar cambios":"Crear lista"}
           </button>
         </div>
@@ -1086,7 +1102,7 @@ function SharedListPage() {
             <div>
               <div style={{fontSize:11,fontWeight:700,color:T.accent,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{list.event}</div>
               <h1 style={{fontWeight:800,fontSize:"clamp(20px,5vw,28px)",color:T.text,lineHeight:1.1,marginBottom:4}}>
-                Lista de regalos de <span style={{color:T.accent}}>{list.ownerName||"alguien"}</span> 🎁
+                Lista de <span style={{color:T.accent}}>{list.event.replace(/^[\p{Emoji}\s]+/u,"").trim().toLowerCase()}</span> de <span style={{color:T.accent}}>{list.ownerName||"alguien"}</span> 🎁
               </h1>
               {list.date && <div style={{fontSize:13,color:T.muted,display:"flex",alignItems:"center",gap:5}}><Calendar size={12}/>{fmtDate(list.date)}</div>}
             </div>
@@ -1144,9 +1160,17 @@ function WannitApp() {
     return unsub;
   },[user]);
 
+  // Handle redirect result (mobile login)
+  useEffect(()=>{
+    getRedirectResult(auth).catch(()=>{});
+  },[]);
+
   const handleLogin = async () => {
-    try { await signInWithPopup(auth, provider); }
-    catch(e) { console.error(e); }
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    try {
+      if(isMobile) { await signInWithRedirect(auth, provider); }
+      else { await signInWithPopup(auth, provider); }
+    } catch(e) { console.error(e); }
   };
 
   const handleLogout = async () => {
