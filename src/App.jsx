@@ -1038,7 +1038,7 @@ function Landing({ onLogin }) {
           <p style={{fontSize:13,color:T.muted,maxWidth:420,lineHeight:1.6}}>
             🐦 Anita se aburrió de recibir lo que no quería. Creó wannit para que tus amigos siempre sepan exactamente qué regalarte.
           </p>
-          <span style={{fontSize:12,color:T.light}}>Hecho con ❤️ en Chile · {new Date().getFullYear()}</span>
+          <span style={{fontSize:12,color:T.light}}>Hecho con ❤️ en Chile · {new Date().getFullYear()} · <a href="/privacidad" style={{color:T.muted,textDecoration:"none"}}>Política de privacidad</a></span>
         </div>
       </div>
     </div>
