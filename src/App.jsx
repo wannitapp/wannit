@@ -40,7 +40,7 @@ const injectStyles = () => {
 const T = {
   bg:"#FFFFFF", surface:"#FFFFFF", surface2:"#F7F7F7", border:"#EBEBEB",
   text:"#222222", sub:"#484848", muted:"#717171", light:"#767676",
-  accent:"#FF385C", accentL:"#FFF1F2", accentD:"#E31C5F",
+  accent:"#E31C5F", accentL:"#FFF1F2", accentD:"#E31C5F",
   taken:"#F0FFF4", takenT:"#276749",
 };
 
