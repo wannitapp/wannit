@@ -1,5 +1,5 @@
+import { useState, useEffect } from "react";
 import Privacy from "./Privacy";
-
 
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { Gift, Pencil, Trash2, Share2, Plus, Lock, ShoppingBag, Copy, X, Check, Star, Settings, PlusCircle, ArrowLeft, Calendar, Link, MessageSquare } from "lucide-react";
