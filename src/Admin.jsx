@@ -53,7 +53,7 @@ export default function Admin() {
         <tbody>
           {lists.sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0)).map((l) => (
             <tr key={l.id} style={{borderBottom:"1px solid #EBEBEB"}}>
-              <td style={{padding:"8px 12px"}}>{l.title || l.name || l.listName || "sin nombre"}</td>
+              <td style={{padding:"8px 12px"}}>{l.listName || l.title || l.name || "sin nombre"}</td>
               <td style={{padding:"8px 12px"}}>{l.items?.length || 0}</td>
               <td style={{padding:"8px 12px"}}>{l.createdAt ? new Date(typeof l.createdAt === "number" ? l.createdAt : l.createdAt.seconds*1000).toLocaleDateString("es-CL") : "—"}</td>
             </tr>
