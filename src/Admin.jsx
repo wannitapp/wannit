@@ -20,7 +20,10 @@ export default function Admin() {
     return unsub;
   }, []);
 
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (!user) {
+    return <div style={{padding:40, fontFamily:"sans-serif"}}>Cargando...</div>;
+  }
+  if (user.email !== ADMIN_EMAIL) {
     return <div style={{padding:40, fontFamily:"sans-serif"}}>403 — acceso denegado</div>;
   }
 
