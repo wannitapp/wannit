@@ -1,3 +1,4 @@
+import Admin from "./Admin";
 import { useState, useEffect } from "react";
 import Privacy from "./Privacy";
 
@@ -1255,9 +1256,10 @@ function AppWithRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/admin" element={<Admin/>}/>
         <Route path="/lista/:listId" element={<SharedListPage/>}/>
         <Route path="/privacidad" element={<Privacy/>}/>
-        <Route path="/*" element={<WannitApp/>}/>
+        <Route path="*" element={<WannitApp/>}/>
       </Routes>
     </BrowserRouter>
   );
