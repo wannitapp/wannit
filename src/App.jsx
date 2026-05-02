@@ -4,7 +4,6 @@ import Privacy from "./Privacy";
 
 import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { Gift, Pencil, Trash2, Share2, Plus, Lock, ShoppingBag, Copy, X, Check, Star, Settings, PlusCircle, ArrowLeft, Calendar, Link, MessageSquare } from "lucide-react";
-import { categorizeItem } from "./categorizeItem";
 import { auth, provider, db } from "./firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, where, getDoc } from "firebase/firestore";
@@ -832,11 +831,7 @@ function ListDetail({ list, user, onBack, onUpdateItems, viewMode, setViewMode }
   const [summarySent, setSummarySent] = useState(false);
 
   const saveItem = async item => {
-    const category = await categorizeItem(item.name, item.price);
-    const itemWithCategory = { ...item, category };
-    const updated = items.find(i=>i.id===itemWithCategory.id)
-      ? items.map(i=>i.id===itemWithCategory.id?itemWithCategory:i)
-      : [...items,itemWithCategory];
+    const updated = items.find(i=>i.id===item.id)
       ? items.map(i=>i.id===item.id?item:i)
       : [...items,item];
     setItems(updated);
